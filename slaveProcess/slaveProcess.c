@@ -12,7 +12,7 @@ int main(int argc, char * argv[]){
 
     int pCount = argc, i, pid,error;
     char * executeCommand = "minisat";     //Tener cuidado con los archivos con espacios
-    char * executeCommandArgs[3] = {"../satExamples/sat1.txt"  ,"../satExamples/satResults.txt",NULL};
+    char * executeCommandArgs[3] = {"../satExamples/sat2.txt"  ,"../satExamples/satResults.txt",NULL};
 
     for(i=1; i < 2 ; i++){
         pid = fork();
@@ -24,8 +24,10 @@ int main(int argc, char * argv[]){
         if(pid == 0){
 
             error = execvp(executeCommand,executeCommandArgs);
-            if(error)
+            if(error){
                 perror("Failed execvp in slave:");
+                return -1;
+            }
         }
         else{
             wait(&pCount);
@@ -33,6 +35,6 @@ int main(int argc, char * argv[]){
 
     }
 
-    if(pid != 0) printf("Termina el padre\n");
+    
     return 0;
 }
