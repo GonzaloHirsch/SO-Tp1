@@ -1,0 +1,9 @@
+#Don't Look Here
+cmake-build-debug/
+#Binaries#
+*.o
+#Packages#
+*.zip
+*.tar
+*.gz
+#Text#
