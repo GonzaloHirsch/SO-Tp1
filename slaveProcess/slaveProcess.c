@@ -11,8 +11,19 @@
 int main(int argc, char * argv[]){
 
     int pCount = argc, i, pid,error;
-    char * executeCommand = "minisat";     //Tener cuidado con los archivos con espacios
-    char * executeCommandArgs[3] = {"../satExamples/sat2.txt"  ,"../satExamples/satResults.txt",NULL};
+    char * executeCommandArgs[4] = {"minisat",NULL,"../satExamples/satResults.txt",NULL};
+    
+    //Para leer del archivo donde se guarda el resultado.
+    char result[100];
+    FILE * resultPointer;
+
+    if((resultPointer = fopen("../satExamples/satResults.txt", "r")) == -1){
+        perror("Error in opening file in slave: ");
+        return -1;
+    }
+
+
+    char * satEx = "../satExamples/sat1.txt"; 
 
     for(i=1; i < 2 ; i++){
         pid = fork();
@@ -23,14 +34,35 @@ int main(int argc, char * argv[]){
 
         if(pid == 0){
 
-            error = execvp(executeCommand,executeCommandArgs);
+            executeCommandArgs[1] = satEx;
+            error = execvp(executeCommandArgs[0],executeCommandArgs);
             if(error){
                 perror("Failed execvp in slave:");
                 return -1;
             }
+
         }
         else{
-            wait(&pCount);
+            wait(&pCount); //A modifiacr por waitpid
+            fscanf(resultPointer, "%[^\n]", result);
+
+            //Si es satfisfacible
+            if(strncmp("SAT", result,3) == 0){
+                //Ejecutamos acciones para satisfacible.
+                printf("Es satisfacible!\n");
+            }
+            //Caso que no es satisfacible...
+            else if(strncmp("UNSAT", result,5) == 0){
+                //Ejecutamos codigo de que no es satisfacible
+                printf("NO es satisfacible!\n");
+            }
+            else{
+                //Codigo de error
+                printf("Codigo extranio!\n");
+            }
+        
+
+
         }
 
     }
