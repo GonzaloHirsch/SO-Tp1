@@ -25,6 +25,8 @@ int main(int argc, char * argv[]){
 
     char * satEx = "../satExamples/sat1.txt"; 
 
+    //Este ciclo for es unicamente represntativo, despues se va a cambiar
+    // por un while(1) con un semaforo adentro.
     for(i=1; i < 2 ; i++){
         pid = fork();
         if(-1 == pid){
