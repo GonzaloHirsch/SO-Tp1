@@ -4,39 +4,50 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 
 #define MAX_PATH_LENGTH 500
+#define UNDEFINED -1
+#define SAT 0
+#define UNSAT 1
+
 
 int main(int argc, char * argv[]){
 
-    int pCount = argc, i, pid,error;
-    char * executeCommandArgs[4] = {"minisat",NULL,"../satExamples/satResults.txt",NULL};
-    
-    //Para leer del archivo donde se guarda el resultado.
-    char result[100];
-    FILE * resultPointer;
+    int  pCount, pid,error;
+    char * executeCommandArgs[4] = {"minisat","-verb=0",NULL,NULL};
+    char * results[2]= {"SATISFIABLE","UNSATISFIABLE"};
+    int result = -1;
 
-    if((resultPointer = fopen("../satExamples/satResults.txt", "r")) == -1){
-        perror("Error in opening file in slave: ");
-        return -1;
-    }
+    //Para leer el resultado
+    int pipefd[2]; //Descriptor para el redirigir el output del child.
 
 
-    char * satEx = "../satExamples/sat1.txt"; 
+    char * satEx = "../data/sat1.txt"; 
 
     //Este ciclo for es unicamente represntativo, despues se va a cambiar
     // por un while(1) con un semaforo adentro.
-    for(i=1; i < 2 ; i++){
+    for(pCount=1; pCount < 2 ; pCount++){
+
+        char buffer[1024];  //en duda si ponerla aca o afuera.
+        pipe(pipefd);//Creamos el canal de comunicacion entre el hijo y el padre
         pid = fork();
+
         if(-1 == pid){
             perror("Error fork en slaveProcess: ");
             return -1;
         }
-
+        //El hijo que ejecutara el minisat
         if(pid == 0){
+            
+            //Establecemos el IPC
+            close(pipefd[0]);
+            dup2(pipefd[1],STDOUT_FILENO);
+            close(pipefd[1]);
 
-            executeCommandArgs[1] = satEx;
+            //Ejecutamos minisat
+            executeCommandArgs[2] = satEx;
             error = execvp(executeCommandArgs[0],executeCommandArgs);
             if(error){
                 perror("Failed execvp in slave:");
@@ -45,25 +56,72 @@ int main(int argc, char * argv[]){
 
         }
         else{
-            wait(&pCount); //A modifiacr por waitpid
-            fscanf(resultPointer, "%[^\n]", result);
+            wait(&pCount); //A modificar por waitpid
 
-            //Si es satfisfacible
-            if(strncmp("SAT", result,3) == 0){
-                //Ejecutamos acciones para satisfacible.
+            //Leemos del hijo.
+            close(pipefd[1]); //No necesitamos write end
+            while (read(pipefd[0], buffer, sizeof(buffer)) != 0){}
+
+            //Chequeamos si es satisfacible o no.
+            //Vamos leyendo por todo el archivo hasta ver si encontramos si se imprimio
+            //que es satisfacible o insatisfacible. Esto es ya que a veces tira warnings y 
+            //mensajes extranios a pesar de estar en verbose=0 el programa minisat.
+            int i = 0,j = 1, state = UNDEFINED; result = UNDEFINED;
+            while(buffer[i] !=0 && result == UNDEFINED){
+                switch(state){
+                    case UNDEFINED:
+                        if(buffer[i] == results[SAT][0]){
+                            state = SAT;
+                        }
+                        else if(buffer[i] == results[UNSAT][0]){
+                            state = UNSAT;
+                        }
+                        break;
+                    case SAT:
+                        if(results[SAT][j] == 0){
+                            result = SAT;
+                        }
+                        else if(buffer[i] == results[SAT][j]){
+                            j++;
+                        }
+                        else if(buffer[i] == results[UNSAT][0]){ //probablemente innecesario
+                            state = UNSAT;
+                            j=1;
+                        }
+                        else{
+                            state =UNDEFINED;
+                            j=1;
+                        }
+                        break;
+                    case UNSAT:
+                        if(results[UNSAT][j] == 0){
+                            result = UNSAT;
+                        }
+                        else if(buffer[i] == results[UNSAT][j]){
+                            j++;
+                        }
+                        else if(buffer[i] == results[SAT][0]){
+                            state = SAT;
+                            j=1;
+                        }
+                        else{
+                            state =UNDEFINED;
+                            j=1;
+                        }
+                        break;
+                }
+                i++;
+            }
+
+            if(result == SAT){
                 printf("Es satisfacible!\n");
             }
-            //Caso que no es satisfacible...
-            else if(strncmp("UNSAT", result,5) == 0){
-                //Ejecutamos codigo de que no es satisfacible
-                printf("NO es satisfacible!\n");
+            else if(result == UNSAT){
+                printf("No es satifacible!\n");
             }
             else{
-                //Codigo de error
-                printf("Codigo extranio!\n");
+                printf("Algo salio mal!\n");
             }
-        
-
 
         }
 
