@@ -44,6 +44,8 @@ void sendFiles(const char * directory){
     // Apertura del directorio
     d = opendir(directory);
 
+
+
     // Valido que no haya habido ningun error al abrirlo
     if (d != NULL)
     {
