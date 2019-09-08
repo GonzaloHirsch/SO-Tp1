@@ -44,8 +44,6 @@ void sendFiles(const char * directory){
     // Apertura del directorio
     d = opendir(directory);
 
-
-
     // Valido que no haya habido ningun error al abrirlo
     if (d != NULL)
     {
@@ -93,10 +91,10 @@ int * createSlaves(int count, int ** sp){
 		if (pid == 0){
 
 			// Cierro el READ end del pipe que va hacia main
-			close(pipeToMain[READ_END]);
+			close(pipeToMain[READ_END])
 
 			// Cierro el WRITE end del pipe que va hacia el slave
-			close(pipeToSlave[WRITE_END]);
+			close(pipeToSlave[WRITE_END])
 
 			// Le pongo el WRITE end del pipe que va al main en el STDOUT del slave
 			dup2( pipeToMain[WRITE_END], STDOUT_FILENO);
@@ -105,10 +103,10 @@ int * createSlaves(int count, int ** sp){
 			dup2( pipeToSlave[READ_END], STDIN_FILENO);
 
 			// Cierro el WRITE end del pipe que va hacia main
-			close(pipeToMain[WRITE_END]);
+			close(pipeToMain[WRITE_END])
 
 			// Cierro el READ end del pipe que va hacia el slave
-			close(pipeToSlave[READ_END]);
+			close(pipeToSlave[READ_END])
 
 			error = execvp(executeCommandArgs[0],executeCommandArgs);
 
