@@ -7,21 +7,12 @@
 #include <fcntl.h>
 
 
-#define MAX_PATH_LENGTH 500
+#define MAX_PROCESS_LENGTH 200
 #define UNDEFINED -1
 #define SAT 0
 #define UNSAT 1
 
-typedef struct{
-    char fileName[100];
-    int numClauses;
-    int numVariables;
-    char result[10];
-    double cpuTime;
-    pid_t pidSlave;
-}processInfoT;
-
-void analyseSatResults(processInfoT * processInforPointer, char * buffer);
+void analyseSatResults(char * processInfo, char * buffer, char * fileName);
 
 
 int main(int argc, char * argv[]){
@@ -70,16 +61,10 @@ int main(int argc, char * argv[]){
             close(pipefd[1]); //No necesitamos write end
             while (read(pipefd[0], buffer, sizeof(buffer)) != 0){}
 
-            //TO DO: cambiar obviamente a que esta estructura se almacene en la shared memory.
-            processInfoT processInfo;
+            //Guardamos la informacion del proceso en processInfo
+            char processInfo[MAX_PROCESS_LENGTH];
+            analyseSatResults(processInfo, buffer,satEx);
 
-            //Llenamos la info del process Info
-            strcpy(processInfo.fileName, satEx); //TO DO: a cambiar obviamente.
-            processInfo.pidSlave = getpid();
-
-            analyseSatResults(&processInfo, buffer);
-
-            printf("%s", buffer);
 
         }
 
@@ -89,52 +74,52 @@ int main(int argc, char * argv[]){
     return 0;
 }
 
-void analyseSatResults(processInfoT * processInforPointer, char * buffer){
+void analyseSatResults(char * processInfo, char * buffer, char * fileName){
 
     char * occurPosition;
-    int numberInt = -1;
-    double numberDouble = -1;
+    char numberOfVariables[5];
+    char numberOfClauses[5];
+    char cpuTime[10];
+    char * satisfacible;
 
     occurPosition = strstr(buffer, "Number of variables:");
     if(occurPosition != NULL){
-        sscanf(occurPosition, "Number of variables: %d",&numberInt);
-        processInforPointer->numVariables = numberInt;
+        sscanf(occurPosition, "Number of variables: %s", numberOfVariables);
     }
     else{//Caso raro si no esta el dato.
-        processInforPointer->numVariables = -1;
-        occurPosition = buffer;
+        perror("Failure finding the number of variables");
     }
 
     //Notar que para no reccorrer todo de nuevo arrancamos en occurposition del anterior.
     occurPosition = strstr(occurPosition, "Number of clauses:");
     if(occurPosition != NULL){
-        sscanf(occurPosition, "Number of clauses: %d",&numberInt);
-        processInforPointer->numClauses = numberInt;
+        sscanf(occurPosition, "Number of clauses: %s",numberOfClauses);
     }
     else{ 
-        processInforPointer->numClauses = -1;
-        occurPosition = buffer;
+        perror("Failure finding the number of clauses");
     }
     
     occurPosition = strstr(occurPosition, "CPU time");
     if(occurPosition != NULL){
-        sscanf(occurPosition, "CPU time : %lf ",&numberDouble);
-        processInforPointer->cpuTime = numberDouble;
+        sscanf(occurPosition, "CPU time : %s ",cpuTime);
     }
     else{
-        processInforPointer->cpuTime = -1;
-        occurPosition = buffer;
+        perror("Failure finding CPU time");
     }
 
     //Ahora verificamos si es satisfacible o no.
     occurPosition = strstr(occurPosition,"UNSATISFIABLE");
     if(occurPosition != NULL){
-        strcpy(processInforPointer->result,"UNSAT");
+        satisfacible = "UNSAT";
     }
     else{
-        strcpy(processInforPointer->result,"SAT");
+        satisfacible = "SAT";
     }
     
+    sprintf(processInfo,"%s\n%s\n%s\n%s\n%s\n%d\n", fileName, numberOfClauses,numberOfVariables,
+    satisfacible,cpuTime,getpid());
+
+    printf(processInfo);
 
 }
 
