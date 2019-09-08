@@ -7,3 +7,5 @@ cmake-build-debug/
 *.tar
 *.gz
 #Text#
+
+.DS_Store
