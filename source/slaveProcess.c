@@ -55,7 +55,7 @@ int main(int argc, char * argv[]){
 
         }
         else{
-            wait(&pCount); //A modificar por waitpid
+            wait(&pCount); //A modificar por waitpid?
 
             //Leemos del hijo.
             close(pipefd[1]); //No necesitamos write end
@@ -112,8 +112,11 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
     if(occurPosition != NULL){
         satisfacible = "UNSAT";
     }
-    else{
+    else if(strstr(buffer, "SATISFIABLE")!= NULL){ 
         satisfacible = "SAT";
+    }
+    else{
+        perror("Error finding satisfacibility.");
     }
     
     sprintf(processInfo,"%s\n%s\n%s\n%s\n%s\n%d\n", fileName, numberOfClauses,numberOfVariables,
