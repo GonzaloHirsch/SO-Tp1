@@ -1,8 +1,0 @@
-//
-// Created by root on 04.09.19.
-//
-
-#ifndef SO_TP1_APPLICATION_PROCESS_H
-#define SO_TP1_APPLICATION_PROCESS_H
-
-#endif //SO_TP1_APPLICATION_PROCESS_H
