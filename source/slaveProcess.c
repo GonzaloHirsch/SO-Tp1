@@ -12,14 +12,22 @@
 #define SAT 0
 #define UNSAT 1
 
+typedef struct{
+    char fileName[100];
+    int numClauses;
+    int numVariables;
+    char result[10];
+    double cpuTime;
+    pid_t pidSlave;
+}processInfoT;
+
+void analyseSatResults(processInfoT * processInforPointer, char * buffer);
+
 
 int main(int argc, char * argv[]){
 
     int  pCount, pid,error;
-    char * executeCommandArgs[4] = {"minisat","-verb=0",NULL,NULL};
-    char * results[2]= {"SATISFIABLE","UNSATISFIABLE"};
-    int result = -1;
-
+    char * executeCommandArgs[4] = {"minisat",NULL,NULL};
     //Para leer el resultado
     int pipefd[2]; //Descriptor para el redirigir el output del child.
 
@@ -30,7 +38,7 @@ int main(int argc, char * argv[]){
     // por un while(1) con un semaforo adentro.
     for(pCount=1; pCount < 2 ; pCount++){
 
-        char buffer[1024];  //en duda si ponerla aca o afuera.
+        char buffer[2048];  //en duda si ponerla aca o afuera.
         pipe(pipefd);//Creamos el canal de comunicacion entre el hijo y el padre
         pid = fork();
 
@@ -47,7 +55,7 @@ int main(int argc, char * argv[]){
             close(pipefd[1]);
 
             //Ejecutamos minisat
-            executeCommandArgs[2] = satEx;
+            executeCommandArgs[1] = satEx;
             error = execvp(executeCommandArgs[0],executeCommandArgs);
             if(error){
                 perror("Failed execvp in slave:");
@@ -62,66 +70,16 @@ int main(int argc, char * argv[]){
             close(pipefd[1]); //No necesitamos write end
             while (read(pipefd[0], buffer, sizeof(buffer)) != 0){}
 
-            //Chequeamos si es satisfacible o no.
-            //Vamos leyendo por todo el archivo hasta ver si encontramos si se imprimio
-            //que es satisfacible o insatisfacible. Esto es ya que a veces tira warnings y 
-            //mensajes extranios a pesar de estar en verbose=0 el programa minisat.
-            int i = 0,j = 1, state = UNDEFINED; result = UNDEFINED;
-            while(buffer[i] !=0 && result == UNDEFINED){
-                switch(state){
-                    case UNDEFINED:
-                        if(buffer[i] == results[SAT][0]){
-                            state = SAT;
-                        }
-                        else if(buffer[i] == results[UNSAT][0]){
-                            state = UNSAT;
-                        }
-                        break;
-                    case SAT:
-                        if(results[SAT][j] == 0){
-                            result = SAT;
-                        }
-                        else if(buffer[i] == results[SAT][j]){
-                            j++;
-                        }
-                        else if(buffer[i] == results[UNSAT][0]){ //probablemente innecesario
-                            state = UNSAT;
-                            j=1;
-                        }
-                        else{
-                            state =UNDEFINED;
-                            j=1;
-                        }
-                        break;
-                    case UNSAT:
-                        if(results[UNSAT][j] == 0){
-                            result = UNSAT;
-                        }
-                        else if(buffer[i] == results[UNSAT][j]){
-                            j++;
-                        }
-                        else if(buffer[i] == results[SAT][0]){
-                            state = SAT;
-                            j=1;
-                        }
-                        else{
-                            state =UNDEFINED;
-                            j=1;
-                        }
-                        break;
-                }
-                i++;
-            }
+            //TO DO: cambiar obviamente a que esta estructura se almacene en la shared memory.
+            processInfoT processInfo;
 
-            if(result == SAT){
-                printf("Es satisfacible!\n");
-            }
-            else if(result == UNSAT){
-                printf("No es satifacible!\n");
-            }
-            else{
-                printf("Algo salio mal!\n");
-            }
+            //Llenamos la info del process Info
+            strcpy(processInfo.fileName, satEx); //TO DO: a cambiar obviamente.
+            processInfo.pidSlave = getpid();
+
+            analyseSatResults(&processInfo, buffer);
+
+            printf("%s", buffer);
 
         }
 
@@ -130,3 +88,53 @@ int main(int argc, char * argv[]){
     
     return 0;
 }
+
+void analyseSatResults(processInfoT * processInforPointer, char * buffer){
+
+    char * occurPosition;
+    int numberInt = -1;
+    double numberDouble = -1;
+
+    occurPosition = strstr(buffer, "Number of variables:");
+    if(occurPosition != NULL){
+        sscanf(occurPosition, "Number of variables: %d",&numberInt);
+        processInforPointer->numVariables = numberInt;
+    }
+    else{//Caso raro si no esta el dato.
+        processInforPointer->numVariables = -1;
+        occurPosition = buffer;
+    }
+
+    //Notar que para no reccorrer todo de nuevo arrancamos en occurposition del anterior.
+    occurPosition = strstr(occurPosition, "Number of clauses:");
+    if(occurPosition != NULL){
+        sscanf(occurPosition, "Number of clauses: %d",&numberInt);
+        processInforPointer->numClauses = numberInt;
+    }
+    else{ 
+        processInforPointer->numClauses = -1;
+        occurPosition = buffer;
+    }
+    
+    occurPosition = strstr(occurPosition, "CPU time");
+    if(occurPosition != NULL){
+        sscanf(occurPosition, "CPU time : %lf ",&numberDouble);
+        processInforPointer->cpuTime = numberDouble;
+    }
+    else{
+        processInforPointer->cpuTime = -1;
+        occurPosition = buffer;
+    }
+
+    //Ahora verificamos si es satisfacible o no.
+    occurPosition = strstr(occurPosition,"UNSATISFIABLE");
+    if(occurPosition != NULL){
+        strcpy(processInforPointer->result,"UNSAT");
+    }
+    else{
+        strcpy(processInforPointer->result,"SAT");
+    }
+    
+
+}
+
