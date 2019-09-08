@@ -6,6 +6,10 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <dirent.h>
+// Semaphore includes
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <semaphore.h>
 
 #define SLAVE_COUNT 10
 #define WRITE_END 1
@@ -44,8 +48,6 @@ void sendFiles(const char * directory){
     // Apertura del directorio
     d = opendir(directory);
 
-
-
     // Valido que no haya habido ningun error al abrirlo
     if (d != NULL)
     {
@@ -72,6 +74,7 @@ int * createSlaves(int count, int ** sp){
 	int slaves[count];
 	int * pipesSlaveToMain[count];
 	int * pipesMainToSlave[count];
+	sem_t * semaphores[count];
 	
 	int pid, error;
 
@@ -118,12 +121,19 @@ int * createSlaves(int count, int ** sp){
 		} 
 		// En este caso es el padre
 		else if (pid > 0){
+
+            char semName[30];
+
+            snprintf(semName, 8, "s_%d", pid);
+
+		    semaphores[i] = sem_open(semName, O_CREAT);
+
 			// Guarda el PID del hijo en el array de slaves
 			slaves[i] = pid;
 		} 
 	}
 
-	(*sps) = (*slavePipes*);
+	(*sps) = (*slavePipes);
 
 	return slaves;
 }
