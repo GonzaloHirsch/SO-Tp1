@@ -32,11 +32,12 @@ int main(int argc, char * argv[]){
 
 		//sendFiles(argv[1]);
 
-	} else if (argc > 2){
-		printf("Demasiados argumentos.");
-	} else {
-		printf("Se espera un argumento.");
+	} else{
+		printf("Error en la cantidad de argumentos\n");
+		return -1;
 	}
+
+
 
 	return 0;
 }
@@ -77,7 +78,7 @@ void sendFiles(const char * directory){
 }
 
 int createSlaves(int count,int slaves[],int pipesWriteSlave[],int pipesReadSlave[]){
-	char * executeCommandArgs[4] = {"./slaveProcess","",NULL,NULL};
+	char * executeCommandArgs[3] = {"./slaveProcess",NULL,NULL};
 	
 	int i,pid, error;
 
@@ -133,7 +134,7 @@ int createSlaves(int count,int slaves[],int pipesWriteSlave[],int pipesReadSlave
 
 			//Guardamos los pipes que nos interesan para interactuar desde el application al main
 			pipesReadSlave[i] = pipeToMain[READ_END];
-			pipesWriteSlave[i] = pipeToMain[WRITE_END];
+			pipesWriteSlave[i] = pipeToSlave[WRITE_END];
 
 			//Guardamos el pid del los proceso esclavos en el orden que fueron creados.
 			slaves[i] = pid;
