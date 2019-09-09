@@ -6,6 +6,6 @@ cmake-build-debug/
 *.zip
 *.tar
 *.gz
-#Text#
+#Text# todo
 
 .DS_Store
