@@ -10,6 +10,8 @@ cmake-build-debug/
 
 .DS_Store
 
-.bash_history
+.idea/workspace.xml
 
-.lesshst
+*.xml
+
+*.iml
