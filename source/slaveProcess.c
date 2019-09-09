@@ -79,7 +79,7 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
     char * occurPosition;
     char numberOfVariables[5];
     char numberOfClauses[5];
-    char cpuTime[10];
+    char cpuTime[15];
     char * satisfacible;
 
     occurPosition = strstr(buffer, "Number of variables:");
