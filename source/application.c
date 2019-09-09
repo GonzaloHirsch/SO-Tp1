@@ -70,7 +70,7 @@ void sendFiles(const char * directory){
 }
 
 int * createSlaves(int count, int ** sp){
-	char * executeCommandArgs[4] = {"./slaveProcess","",NULL,NULL};
+	char * executeCommandArgs[4] = {"./slaveProcess.c","",NULL,NULL};
 	int slaves[count];
 	int * pipesSlaveToMain[count];
 	int * pipesMainToSlave[count];
@@ -133,6 +133,7 @@ int * createSlaves(int count, int ** sp){
 		} 
 	}
 
+	(*sps) = (*slavePipes);
 
 	return slaves;
 }
