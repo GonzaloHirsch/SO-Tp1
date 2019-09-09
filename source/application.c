@@ -11,24 +11,24 @@
 #include <sys/stat.h>
 #include <semaphore.h>
 
-#define SLAVE_COUNT 10
+#define SLAVE_COUNT 3
 #define WRITE_END 1
 #define READ_END 0
 
-int * createSlaves(int count,int ** slaves, int ** pWrite, int ** pRead);
+int createSlaves(int count,int slaves[],int pipesWriteSlave[],int pipesReadSlave[]);
 void sendFiles(const char * directory);
 void sendFile(int pid, char * file);
 
 int main(int argc, char * argv[]){
 
-	int * slaves;
-	int * pipesWriteSlave;
-	int * pipesReadSlave;
+	int slaves[SLAVE_COUNT];
+	int pipesWriteSlave[SLAVE_COUNT];
+	int pipesReadSlave[SLAVE_COUNT];
 
 	// Verificamos que le hayan pasado algo de parametro
 	if (argc == 2){
 
-		slaves = createSlaves(SLAVE_COUNT,&slaves ,&pipesWriteSlave, &pipesReadSlave );
+		createSlaves(SLAVE_COUNT,slaves,pipesWriteSlave, pipesReadSlave);
 
 		//sendFiles(argv[1]);
 
@@ -37,6 +37,8 @@ int main(int argc, char * argv[]){
 	} else {
 		printf("Se espera un argumento.");
 	}
+
+	return 0;
 }
 
 void sendFile(int pid, char * file){
@@ -74,15 +76,12 @@ void sendFiles(const char * directory){
     }
 }
 
-int * createSlaves(int count,int ** slaves, int ** pWrite, int ** pRead){
-	char * executeCommandArgs[4] = {"./slaveProcess.c","",NULL,NULL};
-	int slaves[count];
-	int pipesReadSlave[count];
-	int pipesWriteSlave[count];
+int createSlaves(int count,int slaves[],int pipesWriteSlave[],int pipesReadSlave[]){
+	char * executeCommandArgs[4] = {"./slaveProcess","",NULL,NULL};
 	
-	int pid, error;
+	int i,pid, error;
 
-	for (int i = 0; i < count; i++){
+	for (i = 0; i < count; i++){
 		int pipeToSlave[2];	// 0 --> read end, 1 --> write end
 		int pipeToMain[2];	// 0 --> read end, 1 --> write end
 
@@ -91,9 +90,14 @@ int * createSlaves(int count,int ** slaves, int ** pWrite, int ** pRead){
 		if (pipe(pipeToMain) != 0){ perror("Error: "); }
 
 		pid = fork();
+		if(-1 == pid){
+			perror("Fallo al iniciar los slave en main:");
+			return -1;
+		}
 
 		// En este caso es el hijo
 		if (pid == 0){
+
 
 			// Cierro el READ end del pipe que va hacia main
 			close(pipeToMain[READ_END]);
@@ -127,12 +131,14 @@ int * createSlaves(int count,int ** slaves, int ** pWrite, int ** pRead){
 			// Cierro el READ end del pipe que va hacia el slave
 			close(pipeToSlave[READ_END]);
 
+			//Guardamos los pipes que nos interesan para interactuar desde el application al main
+			pipesReadSlave[i] = pipeToMain[READ_END];
+			pipesWriteSlave[i] = pipeToMain[WRITE_END];
 
-			
-
-
-		} 
+			//Guardamos el pid del los proceso esclavos en el orden que fueron creados.
+			slaves[i] = pid;
+		} 	
 	}
 
-	return slaves;
+	return 0;
 }
