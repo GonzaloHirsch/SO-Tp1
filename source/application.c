@@ -15,17 +15,22 @@
 #define WRITE_END 1
 #define READ_END 0
 
+int * createSlaves(int count,int ** slaves, int ** pWrite, int ** pRead);
+void sendFiles(const char * directory);
+void sendFile(int pid, char * file);
+
 int main(int argc, char * argv[]){
 
 	int * slaves;
-	int ** slavePipes;
+	int * pipesWriteSlave;
+	int * pipesReadSlave;
 
 	// Verificamos que le hayan pasado algo de parametro
 	if (argc == 2){
 
-		slaves = createSlaves(SLAVE_COUNT, slavePipes);
+		slaves = createSlaves(SLAVE_COUNT,&slaves ,&pipesWriteSlave, &pipesReadSlave );
 
-		sendFiles(argv[1]);
+		//sendFiles(argv[1]);
 
 	} else if (argc > 2){
 		printf("Demasiados argumentos.");
@@ -69,12 +74,11 @@ void sendFiles(const char * directory){
     }
 }
 
-int * createSlaves(int count, int ** sp){
+int * createSlaves(int count,int ** slaves, int ** pWrite, int ** pRead){
 	char * executeCommandArgs[4] = {"./slaveProcess.c","",NULL,NULL};
 	int slaves[count];
-	int * pipesSlaveToMain[count];
-	int * pipesMainToSlave[count];
-	sem_t * semaphores[count];
+	int pipesReadSlave[count];
+	int pipesWriteSlave[count];
 	
 	int pid, error;
 
@@ -85,10 +89,6 @@ int * createSlaves(int count, int ** sp){
 		// Creo ambos pipes
 		if (pipe(pipeToSlave) != 0){ perror("Error: "); }
 		if (pipe(pipeToMain) != 0){ perror("Error: "); }
-
-		// Guardo el pipe para despues
-		pipesSlaveToMain[i] = pipeToMain;
-		pipesMainToSlave[i] = pipeToSlave;
 
 		pid = fork();
 
@@ -122,18 +122,17 @@ int * createSlaves(int count, int ** sp){
 		// En este caso es el padre
 		else if (pid > 0){
 
-            char semName[30];
+			// Cierro el WRITE end del pipe que va hacia main
+			close(pipeToMain[WRITE_END]);
+			// Cierro el READ end del pipe que va hacia el slave
+			close(pipeToSlave[READ_END]);
 
-            snprintf(semName, 8, "s_%d", pid);
 
-		    semaphores[i] = sem_open(semName, O_CREAT);
+			
 
-			// Guarda el PID del hijo en el array de slaves
-			slaves[i] = pid;
+
 		} 
 	}
-
-	(*sps) = (*slavePipes);
 
 	return slaves;
 }

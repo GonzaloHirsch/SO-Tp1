@@ -29,7 +29,7 @@ int main(int argc, char * argv[]){
     // por un while(1) con un semaforo adentro.
     for(pCount=1; pCount < 2 ; pCount++){
 
-        char buffer[2048];  //en duda si ponerla aca o afuera.
+        char buffer[2048];  //en duda si ponerlo aca o afuera.
         pipe(pipefd);//Creamos el canal de comunicacion entre el hijo y el padre
         pid = fork();
 
