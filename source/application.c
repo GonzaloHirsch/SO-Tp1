@@ -11,22 +11,36 @@
 #include <sys/stat.h>
 #include <semaphore.h>
 
-#define SLAVE_COUNT 3
+#define SLAVE_COUNT 1
+#define MAX_INFO_TO_SLAVE 300
+
 #define WRITE_END 1
 #define READ_END 0
 
+#define FILE_DELIMITER " ";
+#define FILE_ENDER "\n"
+
 int createSlaves(int count,int slaves[],int pipesSlave[][2]);
+int sendInitialFiles(int fileNums, int pipesSlave[][2], char ** filesToProcess);
+//A borrar posiblemente
 void sendFiles(const char * directory);
-void sendFile(int pid, char * file);
+
 
 
 //TO DO: Agregar que cierre los pipes al final.
 int main(int argc, char * argv[]){
 
+	int fileCount = 0,fileNums = argc-1 ;
 	int slaves[SLAVE_COUNT];
 	int pipesSlave[SLAVE_COUNT][2];
+	//Los archivos a procesar empiezan con el 2do archivo de los argumentos.
+	char ** filesToProcess = argv+1;
 
+	//Creamos los esclavos 
 	createSlaves(SLAVE_COUNT,slaves,pipesSlave);
+
+	//Distribuimos los archivos iniciales
+	fileCount = sendInitialFiles(fileNums,pipesSlave,filesToProcess);
 
 	return 0;
 }
@@ -93,9 +107,33 @@ int createSlaves(int count, int slaves[], int pipesSlave[][2]){
 	return 0;
 }
 
-void sendFile(int pid, char * file){
+/*
+Send initial files to be distributed. 
+Returns the files already distributed.
+ */
+int sendInitialFiles(int fileNums, int pipesSlave[][2], char ** filesToProcess){
+	//Take half of the files and distribute an equal quantity to each slave.
 
+	int filesPerSlave = (fileNums/2)/SLAVE_COUNT;
+	int fileCount = 0, slaveNum = 0,i;
+	
+	for(;slaveNum < SLAVE_COUNT;slaveNum++){
+
+		for(i=0;i<filesPerSlave;i++){
+			write(pipesSlave[slaveNum][WRITE_END], filesToProcess[fileCount],sizeof(filesToProcess[fileCount]));
+			write(pipesSlave[slaveNum][WRITE_END]," ",1);
+			fileCount++;
+		}
+		write(pipesSlave[slaveNum][WRITE_END],"\n",1);
+
+	}
+	
+	return 0;
 }
+
+
+
+/* 
 
 void sendFiles(const char * directory){
 	// Puntero al directorio
@@ -127,3 +165,4 @@ void sendFiles(const char * directory){
     	perror("Error: ");
     }
 }
+*/
