@@ -15,29 +15,80 @@
 #define WRITE_END 1
 #define READ_END 0
 
-int createSlaves(int count,int slaves[],int pipesWriteSlave[],int pipesReadSlave[]);
+int createSlaves(int count,int slaves[],int pipesSlave[][2]);
 void sendFiles(const char * directory);
 void sendFile(int pid, char * file);
 
+
+//TO DO: Agregar que cierre los pipes al final.
 int main(int argc, char * argv[]){
 
 	int slaves[SLAVE_COUNT];
-	int pipesWriteSlave[SLAVE_COUNT];
-	int pipesReadSlave[SLAVE_COUNT];
+	int pipesSlave[SLAVE_COUNT][2];
 
-	// Verificamos que le hayan pasado algo de parametro
-	if (argc == 2){
+	createSlaves(SLAVE_COUNT,slaves,pipesSlave);
 
-		createSlaves(SLAVE_COUNT,slaves,pipesWriteSlave, pipesReadSlave);
+	return 0;
+}
 
-		//sendFiles(argv[1]);
+int createSlaves(int count, int slaves[], int pipesSlave[][2]){
+	char * executeCommandArgs[3] = {"./slaveProcess",NULL,NULL};
+	
+	int i,pid, error;
 
-	} else{
-		printf("Error en la cantidad de argumentos\n");
-		return -1;
+	for (i = 0; i < count; i++){
+		int pipeToSlave[2];	// 0 --> read end, 1 --> write end
+		int pipeToMain[2];	// 0 --> read end, 1 --> write end
+
+		// Creo ambos pipes
+		if (pipe(pipeToSlave) != 0){ perror("Error: "); }
+		if (pipe(pipeToMain) != 0){ perror("Error: "); }
+
+		pid = fork();
+		if(-1 == pid){
+			perror("Fallo al iniciar los slave en main:");
+			return -1;
+		}
+
+		// En este caso es el hijo
+		if (pid == 0){
+
+			// Cierro el READ end del pipe que va hacia main
+			close(pipeToMain[READ_END]);
+			// Cierro el WRITE end del pipe que va hacia el slave
+			close(pipeToSlave[WRITE_END]);
+			// Le pongo el WRITE end del pipe que va al main en el STDOUT del slave
+			dup2( pipeToMain[WRITE_END], STDOUT_FILENO);
+			// Le pongo el READ end del pipe que va al slave en el STDIN del slave
+			dup2( pipeToSlave[READ_END], STDIN_FILENO);
+			// Cierro el WRITE end del pipe que va hacia main
+			close(pipeToMain[WRITE_END]);
+			// Cierro el READ end del pipe que va hacia el slave
+			close(pipeToSlave[READ_END]);
+
+			error = execvp(executeCommandArgs[0],executeCommandArgs);
+
+			if (error < 0){
+				perror("Error: fallo al ejecutar el slaveProcess");
+				exit(0);
+			}
+		} 
+		// En este caso es el padre
+		else if (pid > 0){
+
+			// Cierro el WRITE end del pipe que va hacia main
+			close(pipeToMain[WRITE_END]);
+			// Cierro el READ end del pipe que va hacia el slave
+			close(pipeToSlave[READ_END]);
+
+			//Guardamos los pipes que nos interesan para interactuar desde el application al slave
+			pipesSlave[i][READ_END] = pipeToMain[READ_END];
+			pipesSlave[i][WRITE_END] = pipeToSlave[WRITE_END];
+
+			//Guardamos el pid del los proceso esclavos en el orden que fueron creados.
+			slaves[i] = pid;
+		} 	
 	}
-
-
 
 	return 0;
 }
@@ -75,71 +126,4 @@ void sendFiles(const char * directory){
     else {
     	perror("Error: ");
     }
-}
-
-int createSlaves(int count,int slaves[],int pipesWriteSlave[],int pipesReadSlave[]){
-	char * executeCommandArgs[3] = {"./slaveProcess",NULL,NULL};
-	
-	int i,pid, error;
-
-	for (i = 0; i < count; i++){
-		int pipeToSlave[2];	// 0 --> read end, 1 --> write end
-		int pipeToMain[2];	// 0 --> read end, 1 --> write end
-
-		// Creo ambos pipes
-		if (pipe(pipeToSlave) != 0){ perror("Error: "); }
-		if (pipe(pipeToMain) != 0){ perror("Error: "); }
-
-		pid = fork();
-		if(-1 == pid){
-			perror("Fallo al iniciar los slave en main:");
-			return -1;
-		}
-
-		// En este caso es el hijo
-		if (pid == 0){
-
-
-			// Cierro el READ end del pipe que va hacia main
-			close(pipeToMain[READ_END]);
-
-			// Cierro el WRITE end del pipe que va hacia el slave
-			close(pipeToSlave[WRITE_END]);
-
-			// Le pongo el WRITE end del pipe que va al main en el STDOUT del slave
-			dup2( pipeToMain[WRITE_END], STDOUT_FILENO);
-
-			// Le pongo el READ end del pipe que va al slave en el STDIN del slave
-			dup2( pipeToSlave[READ_END], STDIN_FILENO);
-
-			// Cierro el WRITE end del pipe que va hacia main
-			close(pipeToMain[WRITE_END]);
-
-			// Cierro el READ end del pipe que va hacia el slave
-			close(pipeToSlave[READ_END]);
-
-			error = execvp(executeCommandArgs[0],executeCommandArgs);
-
-			if (error < 0){
-				perror("Error: ");
-			}
-		} 
-		// En este caso es el padre
-		else if (pid > 0){
-
-			// Cierro el WRITE end del pipe que va hacia main
-			close(pipeToMain[WRITE_END]);
-			// Cierro el READ end del pipe que va hacia el slave
-			close(pipeToSlave[READ_END]);
-
-			//Guardamos los pipes que nos interesan para interactuar desde el application al main
-			pipesReadSlave[i] = pipeToMain[READ_END];
-			pipesWriteSlave[i] = pipeToSlave[WRITE_END];
-
-			//Guardamos el pid del los proceso esclavos en el orden que fueron creados.
-			slaves[i] = pid;
-		} 	
-	}
-
-	return 0;
 }
