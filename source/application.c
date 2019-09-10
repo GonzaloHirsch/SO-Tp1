@@ -11,6 +11,10 @@
 #define WRITE_END 1
 #define READ_END 0
 
+void sendFiles(const char * directory);
+int * createSlaves(int count, int ** sp);
+
+
 int main(int argc, char * argv[]){
 
 	int * slaves;
