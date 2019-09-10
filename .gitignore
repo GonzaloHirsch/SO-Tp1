@@ -16,6 +16,5 @@ cmake-build-debug/
 
 *.iml
 
-source/application
-
 source/slaveProcess
+source/application

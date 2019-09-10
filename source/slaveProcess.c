@@ -8,70 +8,120 @@
 
 
 #define MAX_PROCESS_LENGTH 200
-#define UNDEFINED -1
-#define SAT 0
-#define UNSAT 1
+#define MAX_INPUT_BUFFER 200
+#define MAX_SAT_INPUT 2048
+#define MAX_PROCESSES_ALLOWED 50
 
+#define EXIT_STATUS 256
+
+#define TERMINATE_MESSAGE "TERMINATE_PROCESS"
+#define FILE_DELIMITER " "
+
+
+int processSat(char * inputBuffer);
 void analyseSatResults(char * processInfo, char * buffer, char * fileName);
+void readFromStdin(char * inputBuffer, int size);
+int selectProcesses(char * inputBuffer, char * filesToProcess[]);
+void cleanBuffer(char * buffer, int size);
 
 
 int main(int argc, char * argv[]){
 
-    int  pCount, pid,error;
-    char * executeCommandArgs[4] = {"minisat",NULL,NULL};
-    //Para leer el resultado
-    int pipefd[2]; //Descriptor para el redirigir el output del child.
+    char inputBuffer[MAX_INPUT_BUFFER];
+    char * filesToProcess[MAX_PROCESSES_ALLOWED];
+    int cantP,i;
 
 
-    char * satEx = "../data/sat1.txt"; 
+    //Leemos del standard input e iniciamos el ciclo hasta que el applicacion mande
+    //la senial terminate process.
+    readFromStdin(inputBuffer, MAX_INPUT_BUFFER);
+    while(strncmp(inputBuffer,TERMINATE_MESSAGE,sizeof(TERMINATE_MESSAGE) != 0)){
+        
+        //Guardamos en un array los files a procesar.
+        cantP = selectProcesses(inputBuffer,filesToProcess);
 
-    //Este ciclo for es unicamente represntativo, despues se va a cambiar
-    // por un while(1) con un semaforo adentro.
-    for(pCount=1; pCount < 2 ; pCount++){
-
-        char buffer[2048];  //en duda si ponerlo aca o afuera.
-        pipe(pipefd);//Creamos el canal de comunicacion entre el hijo y el padre
-        pid = fork();
-
-        if(-1 == pid){
-            perror("Error fork en slaveProcess: ");
-            return -1;
+        for(i=0;i<cantP;i++){
+            //Procesamos el archivo en el sat,en orden.
+            processSat(filesToProcess[i]);
         }
-        //El hijo que ejecutara el minisat
-        if(pid == 0){
-            
-            //Establecemos el IPC
-            close(pipefd[0]);
-            dup2(pipefd[1],STDOUT_FILENO);
-            close(pipefd[1]);
-
-            //Ejecutamos minisat
-            executeCommandArgs[1] = satEx;
-            error = execvp(executeCommandArgs[0],executeCommandArgs);
-            if(error){
-                perror("Failed execvp in slave:");
-                return -1;
-            }
-
-        }
-        else{
-            wait(&pCount); //A modificar por waitpid?
-
-            //Leemos del hijo.
-            close(pipefd[1]); //No necesitamos write end
-            while (read(pipefd[0], buffer, sizeof(buffer)) != 0){}
-
-            //Guardamos la informacion del proceso en processInfo
-            char processInfo[MAX_PROCESS_LENGTH];
-            analyseSatResults(processInfo, buffer,satEx);
-
-
-        }
+        
+        //Limpiamos el buffer y leemos el input que nos manden.
+        cleanBuffer(inputBuffer,MAX_INPUT_BUFFER);
+        readFromStdin(inputBuffer,MAX_INPUT_BUFFER);        
 
     }
 
-    
+    //TESTING
+    printf("Slave Terminated\n");
+
     return 0;
+}
+
+
+/*
+Creates a slave, procceses and parsed the info of the sat.
+Sends the info via stdout to application process.
+ */
+int processSat(char * inputBuffer){
+
+    int  pid,error, childInfo = 0;
+    char * executeCommandArgs[3] = {"minisat",NULL,NULL};
+    int pipefd[2]; //Descriptor para el redirigir el output del child.
+    char satBuffer[MAX_SAT_INPUT]; 
+
+    
+    pipe(pipefd);//Creamos el canal de comunicacion entre el hijo y el padre
+    pid = fork();
+
+    if(-1 == pid){
+        perror("Error fork en slaveProcess: ");
+        return -1;
+    }
+    //El hijo que ejecutara el minisat
+    if(pid == 0){
+        
+        //Establecemos el IPC con el hijo que va a ejecutar el minisat.
+        close(pipefd[0]);
+        dup2(pipefd[1],STDOUT_FILENO);
+        close(pipefd[1]);
+
+        //Ejecutamos minisat
+        executeCommandArgs[1] = inputBuffer;
+        error = execvp(executeCommandArgs[0],executeCommandArgs);
+        //Si falla, entonces imprimimos que no pudimos ejecutar el minisat y exiteamos al padre.
+        if(error){
+            perror("Failed executing minisat in slave:");
+            exit(1);
+        }
+
+    }
+    else{ //TODO: fijarse como hacer por si falla el execvp del slave termine.
+
+        //Esperamos por el hijo
+        wait(&childInfo);
+
+        //Chequeamos si pudimos ejecutar el exevp correctamente.
+        if(childInfo == EXIT_STATUS){
+            return -1;
+        }
+
+        //Leemos del hijo.
+        close(pipefd[1]); //No necesitamos write end
+        while (read(pipefd[0], satBuffer, sizeof(satBuffer)) != 0){}
+        
+        close(pipefd[0]);// Close pertinente.
+
+        //Guardamos la informacion del proceso en processInfo
+        char processInfo[MAX_PROCESS_LENGTH];
+        analyseSatResults(processInfo, satBuffer,inputBuffer);
+
+        //Imprimimos en stdout
+        printf(processInfo);
+
+    }
+
+    return 0;
+
 }
 
 void analyseSatResults(char * processInfo, char * buffer, char * fileName){
@@ -79,7 +129,7 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
     char * occurPosition;
     char numberOfVariables[5];
     char numberOfClauses[5];
-    char cpuTime[10];
+    char cpuTime[15];
     char * satisfacible;
 
     occurPosition = strstr(buffer, "Number of variables:");
@@ -122,7 +172,48 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
     sprintf(processInfo,"%s\n%s\n%s\n%s\n%s\n%d\n", fileName, numberOfClauses,numberOfVariables,
     satisfacible,cpuTime,getpid());
 
-    printf(processInfo);
 
 }
 
+
+
+void readFromStdin(char * inputBuffer, int size){
+    //Leemos de la stdin hasta que ingrese una newline.
+    char c = 0;
+    int cnt = 0;
+    while(read(STDIN_FILENO, &c, 1) != 0 && cnt < size - 1){
+        if(c == '\n'){
+            inputBuffer[cnt] = 0;
+            return;
+        }
+        inputBuffer[cnt++] = c;
+    }
+    inputBuffer[cnt] = 0; //Por las dudas, hay que asegurar que termine con 0.
+    return;
+}
+
+/*
+    Selects file from the inputBuffer delimited with the FILE_DELIMITER.
+    Saves them in the filesToProcess array.
+    Returns: quantity of files to be processed
+ */
+int selectProcesses(char * inputBuffer, char * filesToProcess[]){
+    const char * fileDelimiter = FILE_DELIMITER;
+    char * token = strtok(inputBuffer,fileDelimiter);
+    int cantP = 0;
+
+    /* walk through other tokens */
+    while(cantP < MAX_PROCESSES_ALLOWED && token != NULL ) {
+        filesToProcess[cantP++] = token;
+        token = strtok(NULL, fileDelimiter);
+    }
+
+    return cantP;
+}
+
+void cleanBuffer(char * buffer, int size){
+    int i=0;
+    for(;i<size;i++){
+        buffer[i] = 0;
+    }
+}
