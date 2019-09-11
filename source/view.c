@@ -5,16 +5,13 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include "../include/buffer.h"
 #include "../include/queueBuffer.h"
 #include "../include/constants.h"
 
-#define MAX_NAME_LENGTH 30
 
 static char * shmNameRoot = "/sharedBuffer";
 static char * putGetSemNameRoot = "/putGetSem";
 static char * mutexNameRoot = "/mutex";
-const char * terminationCode = "NO_MORE_RESULTS";
 
 
 
