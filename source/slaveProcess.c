@@ -115,8 +115,8 @@ int processSat(char * inputBuffer){
         char processInfo[MAX_PROCESS_LENGTH];
         analyseSatResults(processInfo, satBuffer,inputBuffer);
 
-        //Imprimimos en stdout
-        printf(processInfo);
+        //Mandamos el resultado al application via stdout
+        write(STDOUT_FILENO, processInfo, strlen(processInfo));
 
     }
 
@@ -169,7 +169,7 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
         perror("Error finding satisfacibility.");
     }
     
-    sprintf(processInfo,"%s\n%s\n%s\n%s\n%s\n%d\n", fileName, numberOfClauses,numberOfVariables,
+    sprintf(processInfo,"%s %s %s %s %s %d\n", fileName, numberOfClauses,numberOfVariables,
     satisfacible,cpuTime,getpid());
 
 
