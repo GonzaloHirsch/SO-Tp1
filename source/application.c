@@ -15,7 +15,7 @@ void sendFiles(const char * directory);
 int * createSlaves(int count, int ** sp);
 
 
-int main(int argc, char * argv[]){
+int mhain(int argc, char * argv[]){
 
 	int * slaves;
 	int ** slavePipes;
@@ -95,10 +95,10 @@ int * createSlaves(int count, int ** sp){
 		if (pid == 0){
 
 			// Cierro el READ end del pipe que va hacia main
-			close(pipeToMain[READ_END])
+			close(pipeToMain[READ_END]);
 
 			// Cierro el WRITE end del pipe que va hacia el slave
-			close(pipeToSlave[WRITE_END])
+			close(pipeToSlave[WRITE_END]);
 
 			// Le pongo el WRITE end del pipe que va al main en el STDOUT del slave
 			dup2( pipeToMain[WRITE_END], STDOUT_FILENO);

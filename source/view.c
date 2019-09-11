@@ -7,21 +7,27 @@
 #include <unistd.h>
 #include "../include/buffer.h"
 
-static char * nameRoot = "/sharedBuffer";
+static char * shmNameRoot = "/sharedBuffer";
 static char * useSemNameRoot = "/useSem";
 static char * rwSemNameRoot = "/rwSem";
 const char * terminationCode = "NO_MORE_RESULTS";
 
 int main(int argc, char * argv){
 
-    if(argc != 2){
-        return -1;
-    }
+    char pid;
+    size_t size;
+
+    fscanf(stdin, "%d\n", &pid);
+    fscanf(stdin, "%ld\n", &size);
+
+    //todo remove test line
+    printf("app pid: %d\nbuff_size:%ld\n\n", pid, size);
+
 
     //auxBuffer is a dynamically allocated string for temporarily storing the names of
     //semaphore/shm names
-    char * auxBuffer = malloc(strlen(nameRoot) + strlen(argv[1]));
-    sprintf(auxBuffer, "%s%s", nameRoot, argv[1]);
+    char * auxBuffer = malloc(strlen(shmNameRoot) + strlen(argv[1]));
+    sprintf(auxBuffer, "%s%d", shmNameRoot, argv[1]);
 
     int sharedBufferFd = shm_open(auxBuffer, O_CREAT | O_RDWR, 0600);
     ftruncate(sharedBufferFd, getBufferSize());
@@ -41,7 +47,7 @@ int main(int argc, char * argv){
         sem_wait(useSem);
         sem_wait(rwSem);
 
-        getString(qB);
+        getString(theBuffer);
 
         sem_post(rwSem);
     }
