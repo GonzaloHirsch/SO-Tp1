@@ -6,11 +6,17 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include "../include/buffer.h"
+#include "../include/queueBuffer.h"
+#include "../include/constants.h"
+
+#define MAX_NAME_LENGTH 30
 
 static char * shmNameRoot = "/sharedBuffer";
-static char * useSemNameRoot = "/useSem";
-static char * rwSemNameRoot = "/rwSem";
+static char * putGetSemNameRoot = "/putGetSem";
+static char * mutexNameRoot = "/mutex";
 const char * terminationCode = "NO_MORE_RESULTS";
+
+
 
 int main(int argc, char * argv){
 
@@ -24,33 +30,37 @@ int main(int argc, char * argv){
     printf("app pid: %d\nbuff_size:%ld\n\n", pid, size);
 
 
-    //auxBuffer is a dynamically allocated string for temporarily storing the names of
-    //semaphore/shm names
-    char * auxBuffer = malloc(strlen(shmNameRoot) + strlen(argv[1]));
-    sprintf(auxBuffer, "%s%d", shmNameRoot, argv[1]);
+    //this is a buffer for shm/semaphore names
+    char namesBuffer[MAX_NAME_LENGTH];
+    sprintf(namesBuffer, "%s%d", shmNameRoot, pid);
 
-    int sharedBufferFd = shm_open(auxBuffer, O_CREAT | O_RDWR, 0600);
-    ftruncate(sharedBufferFd, getBufferSize());
-    Buffer theBuffer = (Buffer) mmap(0, getBufferSize(), PROT_WRITE | PROT_READ, MAP_SHARED, sharedBufferFd, 0);
+    //opening the shm (file descriptor, truncating, mapping)
+    int sharedBufferFd = shm_open(namesBuffer, O_CREAT | O_RDWR, 0600);
+    ftruncate(sharedBufferFd, size + BUFFER_OFFSET);
+    QueueBuffer qB = (QueueBuffer) mmap(0, size + BUFFER_OFFSET, PROT_WRITE | PROT_READ, MAP_SHARED, sharedBufferFd, 0);
 
-    //Code related to useSem (flag indicating the process is reading/writing to shm)
-    sprintf(auxBuffer, "%s%s", useSemNameRoot, argv[1]);
-    sem_t * useSem = sem_open(auxBuffer, O_CREAT | O_RDWR, 0600);
-    sprintf(auxBuffer, "%s%s", rwSemNameRoot);
-    sem_t * rwSem = sem_open(auxBuffer, O_CREAT | O_RDWR, 0600);
-    //Freeing auxBuffer - no longer used
-    free(auxBuffer);
-
+    //1 semaphore for indicating there is content to read
+    //1 mutex semaphore for performing operations on memory
+    sprintf(namesBuffer, "%s%d", putGetSemNameRoot, pid);
+    sem_t * putGetSem = sem_open(namesBuffer, O_CREAT);
+    sprintf(namesBuffer, "%s%d", mutexNameRoot, pid);
+    sem_t * mutex = sem_open(namesBuffer, O_CREAT);
 
 
-    while(1) {
-        sem_wait(useSem);
-        sem_wait(rwSem);
+    char readBuff[1024];
 
-        getString(theBuffer);
-
-        sem_post(rwSem);
+    printf("%1024s\n", readBuff);
+    while(strcmp(readBuff, END_OF_STREAM) != 0){
+        printf("Waiting for putGetSem...\n");
+        sem_wait(putGetSem);
+        printf("got putGetSem, waiting for mutex\n");
+        sem_wait(mutex);
+        if(hasNext(qB))
+            printf("%s\n", getString(qB, readBuff));
+        printf("%s\n", getCurrentString(qB));
+        printf("posting on mutex\n");
+        sem_post(mutex);
     }
 
-    free(auxBuffer);
+    free(namesBuffer);
 }
