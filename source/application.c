@@ -13,7 +13,7 @@
 #include <sys/stat.h>
 #include <semaphore.h>
 
-#define SLAVE_COUNT 1
+#define SLAVE_COUNT 5
 #define MAX_INFO_TO_SLAVE 300
 #define MAX_INFO_FROM_SLAVE 200
 
@@ -80,7 +80,7 @@ int main(int argc, char * argv[]){
 		//Si ya llegamos a la cantidad de numPipesReady entonces no hay que leer mas.
 		for(i=0;i<SLAVE_COUNT && pipesChecked < numPipesReady;i++){
 
-			//Si alguno recibio info...
+			//Si ese pipe recibio info...
 			if(FD_ISSET(pipesSlave[i][READ_END],&pipeReadSet)){
 
 				readInfoSlave(pipesSlave,i);//Leemos la informacion recibida
@@ -245,10 +245,7 @@ void terminateSlaves(int pipesSlave[][2]){
 	char * terminateMess = "TERMINATE_PROCESS\n";
 	for(i=0;i<SLAVE_COUNT;i++){
 		write(pipesSlave[i][WRITE_END],terminateMess,strlen(terminateMess));
-
 	}
-
-
 
 }
 
