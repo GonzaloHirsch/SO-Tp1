@@ -30,6 +30,10 @@ void terminateView();
 //TO DO: Agregar que cierre los pipes al final.
 int main(int argc, char * argv[]){
 
+
+    //wait for view
+    sleep(2);
+
 	int filesSend = 0,filesCant = argc-1,filesRec =0;
 	int slaves[SLAVE_COUNT];
 	int pipesSlave[SLAVE_COUNT][2];
@@ -43,7 +47,7 @@ int main(int argc, char * argv[]){
     int pid = getpid();
 
     //Print to stdout for piping with view
-    fprintf(stdout,  "%d\n%d\n", getpid(), size);
+    fprintf(stdout,  "%d\n%ld\n", pid, size);
 
     char namesBuffer[MAX_NAME_LENGTH];
     sprintf(namesBuffer, "%s%d", SHM_NAME_ROOT, pid);
@@ -237,9 +241,6 @@ void readInfoSlave(int pipesSlave[][2], int slaveNum, char *tempBuffer) {
     }
     tempBuffer[cnt] = 0; //Por las dudas, hay que asegurar que termine con 0.
 
-
-	//Por ahora solo lo imprimimos, espero a que ribas me diga como guardar en shm
-	printf("%s\n", tempBuffer);
 }
 
 void sendInfoSlave(int pipesSlave[][2],int slaveNum, char ** filesToProcess, int filesSend){
