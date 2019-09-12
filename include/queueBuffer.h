@@ -28,7 +28,7 @@ char * getString(QueueBuffer qB, char * dst);
 int hasNext(QueueBuffer qB);
 //Returns current string in buffer starting at
 //offset qB->head without proceeding to the next string
-char * getCurrentString(QueueBuffer qB);
+const char * getCurrentString(QueueBuffer qB);
 //Inserts char in buffer; Returns: 0 when successful, -1 when full todo delete:unused
 int putChar(QueueBuffer qB, char c);
 //Returns next char in buffer when successful, 0 when empty todo delete:unused

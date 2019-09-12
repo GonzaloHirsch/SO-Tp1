@@ -14,6 +14,7 @@ static char * putGetSemNameRoot = "/putGetSem";
 static char * mutexNameRoot = "/mutex";
 
 
+void printData(char *buff);
 
 int main(int argc, char * argv){
 
@@ -44,7 +45,7 @@ int main(int argc, char * argv){
     sem_t * mutex = sem_open(namesBuffer, O_CREAT);
 
 
-    char readBuff[1024];
+    char readBuff[MAX_INFO_FROM_SLAVE];
 
     printf("%1024s\n", readBuff);
     while(strcmp(readBuff, END_OF_STREAM) != 0){
@@ -53,11 +54,29 @@ int main(int argc, char * argv){
         printf("got putGetSem, waiting for mutex\n");
         sem_wait(mutex);
         if(hasNext(qB))
-            printf("%s\n", getString(qB, readBuff));
-        printf("%s\n", getCurrentString(qB));
+            getString(qB, readBuff);
+        printData(readBuff);
+        //printf("%s\n", getCurrentString(qB));
         printf("posting on mutex\n");
         sem_post(mutex);
     }
 
-    free(namesBuffer);
+    munmap(qB, STD_BUFF_LENGTH + BUFFER_OFFSET);
+    close(sharedBufferFd);
+
+    sem_close(putGetSem);
+    sem_close(mutex);
+
+}
+
+void printData(char *buff) {
+
+    char * info[6] = {"Nombre del Archivo", "Cantidad de Clausulas", "Cantidad de Variables", "Resultado", "Tiempo de Procesamiento", "ID del Esclavo"};
+
+    char * token = strtok(buff, FILE_DELIMITER);
+    for(int i = 0; i<6; i++){
+        printf("%s: %s\n", info[i], token);
+        token = strtok(NULL, FILE_DELIMITER);
+    }
+    printf("\n");
 }

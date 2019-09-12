@@ -3,8 +3,16 @@
 #include <string.h>
 
 
+typedef struct QueueBufferCDT{
+
+    size_t size;
+    int head, tail;
+    char buff[];
+
+}QueueBufferCDT;
+
 //copies the full string including 0 char at the end
-char strcopy(char * dst, const char * src){
+static char strcopy(char * dst, const char * src){
 
     char aux=0;
     while(src[aux]){
@@ -14,14 +22,6 @@ char strcopy(char * dst, const char * src){
     dst[aux++]=0;
     return aux;
 }
-
-typedef struct QueueBufferCDT{
-
-    size_t size;
-    int head, tail;
-    char buff[];
-
-}QueueBufferCDT;
 
 
 void initializeBuffer(QueueBuffer qB, size_t buffSize){
@@ -49,7 +49,7 @@ char * getString(QueueBuffer qB, char * dst){
     return aux;
 }
 
-char * getCurrentString(QueueBuffer qB){
+const char * getCurrentString(QueueBuffer qB){
     return &qB->buff[qB->head];
 }
 
