@@ -95,7 +95,7 @@ int processSat(char * inputBuffer){
         }
 
     }
-    else{ //TODO: fijarse como hacer por si falla el execvp del slave termine.
+    else{ 
 
         //Esperamos por el hijo
         wait(&childInfo);

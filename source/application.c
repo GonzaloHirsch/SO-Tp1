@@ -13,7 +13,7 @@
 #include <sys/stat.h>
 #include <semaphore.h>
 
-#define SLAVE_COUNT 3
+#define SLAVE_COUNT 5
 #define MAX_INFO_TO_SLAVE 300
 #define MAX_INFO_FROM_SLAVE 200
 
@@ -34,7 +34,7 @@ void terminateSlaves(int pipesSlave[][2]);
 //TO DO: Agregar que cierre los pipes al final.
 int main(int argc, char * argv[]){
 
-	int filesSend = 0,filesCant = argc-1,filesRec =0  ;
+	int filesSend = 0,filesCant = argc-1,filesRec =0;
 	int slaves[SLAVE_COUNT];
 	int pipesSlave[SLAVE_COUNT][2];
 	//Los archivos a procesar empiezan con el 2do archivo de los argumentos.
@@ -45,10 +45,10 @@ int main(int argc, char * argv[]){
 
 	//Creamos el set de pipes a esperar para que lean.
 	fd_set pipeReadSet;
-	int i=0, numPipesReady;
+	int i=0, pipesChecked = 0 ,numPipesReady;
 	//Struct que indica el tiempo a max a esperar a recibir data.
 	struct timeval tv;
-	tv.tv_sec = 20;
+	tv.tv_sec = 30;
     tv.tv_usec = 0;
 
 	FD_ZERO(&pipeReadSet);
@@ -62,24 +62,25 @@ int main(int argc, char * argv[]){
 	while(filesRec < filesCant){
 		//Esperaremos por un tiempo indeterminado que alguno de los pipes este listo para la lectura.
 
-		numPipesReady = select(SLAVE_COUNT+1, &pipeReadSet, NULL,NULL, &tv);
-
+		//FD_SETSIZE: hace que ande todo. sino no anda. porque? no hay porque.
+		numPipesReady = select(FD_SETSIZE, &pipeReadSet, NULL,NULL, &tv);
 
 		if(numPipesReady == -1){
 			perror("Error in select():");
 			break;
 		}
 		else if(numPipesReady == 0){
-			perror("No data received");
+			perror("No data received in 30 seconds");
 			break;
 		}
 
+		pipesChecked = 0; //Contamos cuantos archivos vamos procesando en este select.
+
 		//Buscamos en cada pipe de los esclavos cual de ellos recibio info.
-		for(i=0;i<SLAVE_COUNT;i++){
+		//Si ya llegamos a la cantidad de numPipesReady entonces no hay que leer mas.
+		for(i=0;i<SLAVE_COUNT && pipesChecked < numPipesReady;i++){
 
-			printf("%d %d\n", i,FD_ISSET(pipesSlave[i][READ_END],&pipeReadSet));
-
-			//Si alguno recibio info...
+			//Si ese pipe recibio info...
 			if(FD_ISSET(pipesSlave[i][READ_END],&pipeReadSet)){
 
 				readInfoSlave(pipesSlave,i);//Leemos la informacion recibida
@@ -90,16 +91,24 @@ int main(int argc, char * argv[]){
 					sendInfoSlave(pipesSlave,i,filesToProcess,filesSend);
 					filesSend++;
 				}
-			}
-				
+
+				pipesChecked++;
+			}		
+		}
+
+		//Re seteamos el set.
+		FD_ZERO(&pipeReadSet);
+		for(i=0;i<SLAVE_COUNT;i++){
+			FD_SET(pipesSlave[i][READ_END],&pipeReadSet);
 		}
 		
 		
 	}
 
-	printf("Ending\n");
 	terminateSlaves(pipesSlave);
 	
+	//TODO: close pipes.
+
 
 	return 0;
 }
@@ -228,12 +237,16 @@ int sendInitialFiles(int filesCant, int pipesSlave[][2], char ** filesToProcess)
 	return filesSend;
 }
 
+/*
+	Manda la signal de terminacion a todos los procesos.
+ */
 void terminateSlaves(int pipesSlave[][2]){
 	int i;
 	char * terminateMess = "TERMINATE_PROCESS\n";
 	for(i=0;i<SLAVE_COUNT;i++){
 		write(pipesSlave[i][WRITE_END],terminateMess,strlen(terminateMess));
 	}
+
 }
 
 
