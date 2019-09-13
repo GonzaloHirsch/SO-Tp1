@@ -12,14 +12,15 @@ typedef struct QueueBufferCDT{
 }QueueBufferCDT;
 
 //copies the full string including 0 char at the end
-static char strcopy(char * dst, const char * src){
+static int strcopy(char * dst, const char * src){
 
-    char aux=0;
-    while(src[aux]){
-        dst[aux]=src[aux];
+    int aux=0;
+    while(*(src+aux)){
+        *(dst+aux)=*(src+aux);
         aux++;
     }
-    dst[aux++]=0;
+    *(dst+aux)=0;
+    aux++;
     return aux;
 }
 

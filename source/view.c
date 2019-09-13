@@ -11,7 +11,7 @@
 
 void printData(const char *buff);
 
-int main(int argc, char * argv){
+int main(int argc, char * argv[]){
 
     int pid;
     size_t size;
