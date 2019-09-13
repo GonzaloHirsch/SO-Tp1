@@ -12,27 +12,27 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <semaphore.h>
+#include <sys/mman.h>
+#include "../include/constants.h"
+#include "../include/queueBuffer.h"
 
-#define SLAVE_COUNT 5
-#define MAX_INFO_TO_SLAVE 300
-#define MAX_INFO_FROM_SLAVE 200
 
-#define WRITE_END 1
-#define READ_END 0
-
-#define FILE_DELIMITER " ";
-#define FILE_ENDER "\n"
 
 int createSlaves(int count,int slaves[],int pipesSlave[][2]);
-void readInfoSlave(int pipesSlave[][2], int slaveNum);
+void readInfoSlave(int pipesSlave[][2], int slaveNum, char *tempBuffer);
 void sendInfoSlave(int pipesSlave[][2],int slaveNum, char ** filesToProcess, int filesSend);
 int sendInitialFiles(int fileCant, int pipesSlave[][2], char ** filesToProcess);
 void terminateSlaves(int pipesSlave[][2]);
+void sendInfoToView(char *buffer, QueueBuffer pCdt, sem_t *sem, sem_t *mutex);
 
-
+void terminateView();
 
 //TO DO: Agregar que cierre los pipes al final.
 int main(int argc, char * argv[]){
+
+
+    //wait for view
+    sleep(2);
 
 	int filesSend = 0,filesCant = argc-1,filesRec =0;
 	int slaves[SLAVE_COUNT];
@@ -40,7 +40,38 @@ int main(int argc, char * argv[]){
 	//Los archivos a procesar empiezan con el 2do archivo de los argumentos.
 	char ** filesToProcess = argv+1;
 
-	//Creamos los esclavos 
+    //todo integration with view / beginning of view ipc preparation code
+
+    //Example user-defined buffer size
+    size_t size = argc*MAX_INFO_FROM_SLAVE;
+    int pid = getpid();
+
+    //Print to stdout for piping with view
+    fprintf(stdout,  "%d\n%ld\n", pid, size);
+
+    char namesBuffer[MAX_NAME_LENGTH];
+    sprintf(namesBuffer, "%s%d", SHM_NAME_ROOT, pid);
+
+    //Opening the shm (file descriptor, truncating, mapping)
+    int sharedBufferFd = shm_open(namesBuffer, O_CREAT | O_RDWR, 0600);
+    ftruncate(sharedBufferFd, size + BUFFER_OFFSET);
+    QueueBuffer qB = (QueueBuffer) mmap(0, size + BUFFER_OFFSET, PROT_WRITE | PROT_READ, MAP_SHARED, sharedBufferFd, 0);
+    initializeBuffer(qB, size);
+
+    //1 semaphore for indicating there is content to read
+    //1 mutex semaphore for performing operations on memory
+    sprintf(namesBuffer, "%s%d", PUT_GET_SEM_NAME_ROOT, pid);
+    sem_t * putGetSem = sem_open(namesBuffer, O_CREAT, 0600, 0);
+    sprintf(namesBuffer, "%s%d", MUTEX_NAME_ROOT, pid);
+    sem_t * mutex = sem_open(namesBuffer, O_CREAT, 0600, 1);
+
+    //todo tengo que ver esto
+    sem_post(mutex);
+
+    //todo end of view ipc preparation code
+
+
+    //Creamos los esclavos
 	createSlaves(SLAVE_COUNT,slaves,pipesSlave);
 
 	//Creamos el set de pipes a esperar para que lean.
@@ -76,6 +107,9 @@ int main(int argc, char * argv[]){
 
 		pipesChecked = 0; //Contamos cuantos archivos vamos procesando en este select.
 
+        //tempBuffer to read the results and send them to the view process
+        char tempBuffer[MAX_INFO_FROM_SLAVE];
+
 		//Buscamos en cada pipe de los esclavos cual de ellos recibio info.
 		//Si ya llegamos a la cantidad de numPipesReady entonces no hay que leer mas.
 		for(i=0;i<SLAVE_COUNT && pipesChecked < numPipesReady;i++){
@@ -83,7 +117,8 @@ int main(int argc, char * argv[]){
 			//Si ese pipe recibio info...
 			if(FD_ISSET(pipesSlave[i][READ_END],&pipeReadSet)){
 
-				readInfoSlave(pipesSlave,i);//Leemos la informacion recibida
+                readInfoSlave(pipesSlave, i, tempBuffer);//Leemos la informacion recibida
+                sendInfoToView(tempBuffer, qB, putGetSem, mutex);
 				filesRec++;
 
 				//Si todavia quedan archivos por mandar le enviamos 1 mas.
@@ -105,12 +140,32 @@ int main(int argc, char * argv[]){
 		
 	}
 
+	//Signal view that no more files are left
+	sendInfoToView(END_OF_STREAM, qB, putGetSem, mutex);
 	terminateSlaves(pipesSlave);
-	
+
+
 	//TODO: close pipes.
 
 
+    //todo view process housekeeping
+    munmap(&qB, STD_BUFF_LENGTH + BUFFER_OFFSET);
+    close(sharedBufferFd);
+
+    sem_close(putGetSem);
+    sem_close(mutex);
+
 	return 0;
+}
+
+
+
+void sendInfoToView(char *buffer, QueueBuffer qB, sem_t *putGetSem, sem_t *mutex) {
+    sem_wait(mutex);
+    //todo write whatever to view
+    putString(qB, buffer);
+    sem_post(mutex);
+    sem_post(putGetSem);
 }
 
 int createSlaves(int count, int slaves[], int pipesSlave[][2]){
@@ -175,9 +230,9 @@ int createSlaves(int count, int slaves[], int pipesSlave[][2]){
 	return 0;
 }
 
-void readInfoSlave(int pipesSlave[][2], int slaveNum){
+void readInfoSlave(int pipesSlave[][2], int slaveNum, char *tempBuffer) {
 
-    char tempBuffer[MAX_INFO_FROM_SLAVE], c = 0;
+    char c = 0;
     int cnt = 0;
 
 	//Leemos del pipe hasta que termine la string enviada
@@ -190,9 +245,7 @@ void readInfoSlave(int pipesSlave[][2], int slaveNum){
     }
     tempBuffer[cnt] = 0; //Por las dudas, hay que asegurar que termine con 0.
 
-
-	//Por ahora solo lo imprimimos, espero a que ribas me diga como guardar en shm
-	printf("%s\n", tempBuffer);
+    printf("%s\n", tempBuffer);
 }
 
 void sendInfoSlave(int pipesSlave[][2],int slaveNum, char ** filesToProcess, int filesSend){
@@ -248,8 +301,6 @@ void terminateSlaves(int pipesSlave[][2]){
 	}
 
 }
-
-
 
 /* 
 
