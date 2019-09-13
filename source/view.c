@@ -18,9 +18,6 @@ int main(int argc, char * argv[]){
 
     scanf("%d\n%ld\n", &pid, &size);
 
-    //todo remove test line
-    printf("app pid: %d\nbuff_size:%ld\n\n", pid, size);
-
 
     //this is a buffer for shm/semaphore names
     char namesBuffer[MAX_NAME_LENGTH];

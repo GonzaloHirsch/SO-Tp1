@@ -57,26 +57,3 @@ const char * getCurrentString(QueueBuffer qB){
 int hasNext(QueueBuffer qB){
     return qB->head < qB->tail;
 }
-
-int putChar(QueueBuffer qB, char c){
-
-    //Returns -1 when full
-    if((qB->tail + 1) % MAX_BUFF_LENGTH == qB->head){
-        return -1;
-    }
-
-    qB->buff[qB->tail++] = c;
-
-    return 0;
-}
-
-char getChar(QueueBuffer qB){
-
-    //Returns 0 when empty
-    if(qB->head == qB->tail){
-        return 0;
-    }
-
-    char aux = qB->buff[qB->head++];
-    return aux;
-}
