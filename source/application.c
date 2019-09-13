@@ -259,7 +259,6 @@ void readInfoSlave(int pipesSlave[][2], int slaveNum, char *tempBuffer) {
     }
     tempBuffer[cnt] = 0; //Por las dudas, hay que asegurar que termine con 0.
 
-    printf("%s\n", tempBuffer);
 }
 
 void sendInfoSlave(int pipesSlave[][2],int slaveNum, char ** filesToProcess, int filesSend){
