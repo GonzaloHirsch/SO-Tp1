@@ -9,7 +9,7 @@
 #include "../include/constants.h"
 
 
-void printData(char *buff);
+void printData(const char *buff);
 
 int main(int argc, char * argv){
 
@@ -41,17 +41,17 @@ int main(int argc, char * argv){
 
     char readBuff[MAX_INFO_FROM_SLAVE];
 
-    printf("%1024s\n", readBuff);
     while(1){
         sem_wait(putGetSem);
         sem_wait(mutex);
         if(hasNext(qB))
             getString(qB, readBuff);
+        sem_post(mutex);
         if(strcmp(readBuff, END_OF_STREAM) == 0)
             break;
         printData(readBuff);
-        sem_post(mutex);
     }
+
 
     munmap(qB, STD_BUFF_LENGTH + BUFFER_OFFSET);
     close(sharedBufferFd);
@@ -62,11 +62,16 @@ int main(int argc, char * argv){
     return 0;
 }
 
-void printData(char *buff) {
+void printData(const char *buff) {
+
+    static char auxBuff[MAX_INFO_FROM_SLAVE];
+
+    //so that buff doesn't get modified
+    strcpy(auxBuff, buff);
 
     char * info[6] = {"Nombre del Archivo", "Cantidad de Clausulas", "Cantidad de Variables", "Resultado", "Tiempo de Procesamiento", "ID del Esclavo"};
 
-    char * token = strtok(buff, FILE_DELIMITER);
+    char * token = strtok(auxBuff, FILE_DELIMITER);
     for(int i = 0; i<6; i++){
         printf("%s: %s\n", info[i], token);
         token = strtok(NULL, FILE_DELIMITER);
