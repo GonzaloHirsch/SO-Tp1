@@ -22,4 +22,8 @@
 #define FILE_DELIMITER " "
 #define FILE_ENDER "\n"
 
+#define TERMINATE_MESSAGE "TERMINATE_PROCESS"
+#define ERROR_MESSAGE "ERROR\n"
+#define NO_INFO "N/I"
+
 #endif //QUEUE_CONSTANTS_H

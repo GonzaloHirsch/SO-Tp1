@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include "../include/constants.h"
 
 
 #define MAX_PROCESS_LENGTH 200
@@ -14,8 +15,7 @@
 
 #define EXIT_STATUS 256
 
-#define TERMINATE_MESSAGE "TERMINATE_PROCESS"
-#define FILE_DELIMITER " "
+
 
 
 int processSat(char * inputBuffer);
@@ -81,9 +81,9 @@ int processSat(char * inputBuffer){
     if(pid == 0){
         
         //Establecemos el IPC con el hijo que va a ejecutar el minisat.
-        close(pipefd[0]);
-        dup2(pipefd[1],STDOUT_FILENO);
-        close(pipefd[1]);
+        close(pipefd[READ_END]);
+        dup2(pipefd[WRITE_END],STDOUT_FILENO);
+        close(pipefd[WRITE_END]);
 
         //Ejecutamos minisat
         executeCommandArgs[1] = inputBuffer;
@@ -102,14 +102,16 @@ int processSat(char * inputBuffer){
 
         //Chequeamos si pudimos ejecutar el exevp correctamente.
         if(childInfo == EXIT_STATUS){
+            close(pipefd[READ_END]);
+            write(STDOUT_FILENO, ERROR_MESSAGE, strlen(ERROR_MESSAGE));
             return -1;
         }
 
         //Leemos del hijo.
         close(pipefd[1]); //No necesitamos write end
-        while (read(pipefd[0], satBuffer, sizeof(satBuffer)) != 0){}
+        while (read(pipefd[READ_END], satBuffer, sizeof(satBuffer)) != 0){}
         
-        close(pipefd[0]);// Close pertinente.
+        close(pipefd[READ_END]);// Close pertinente.
 
         //Guardamos la informacion del proceso en processInfo
         char processInfo[MAX_PROCESS_LENGTH];
@@ -127,10 +129,10 @@ int processSat(char * inputBuffer){
 void analyseSatResults(char * processInfo, char * buffer, char * fileName){
 
     char * occurPosition;
-    char numberOfVariables[5];
-    char numberOfClauses[5];
+    char numberOfVariables[10];
+    char numberOfClauses[10];
     char cpuTime[15];
-    char * satisfacible;
+    char satisfacible[10];
 
     occurPosition = strstr(buffer, "Number of variables:");
     if(occurPosition != NULL){
@@ -138,37 +140,46 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
     }
     else{//Caso raro si no esta el dato.
         perror("Failure finding the number of variables");
+        //check that is null terminated
+        strncpy(numberOfVariables,NO_INFO,strlen(NO_INFO));
     }
 
     //Notar que para no reccorrer todo de nuevo arrancamos en occurposition del anterior.
-    occurPosition = strstr(occurPosition, "Number of clauses:");
+    occurPosition = strstr(buffer, "Number of clauses:");
     if(occurPosition != NULL){
         sscanf(occurPosition, "Number of clauses: %s",numberOfClauses);
     }
     else{ 
         perror("Failure finding the number of clauses");
+        strncpy(numberOfClauses,NO_INFO,strlen(NO_INFO));
     }
     
-    occurPosition = strstr(occurPosition, "CPU time");
+    occurPosition = strstr(buffer, "CPU time");
     if(occurPosition != NULL){
         sscanf(occurPosition, "CPU time : %s ",cpuTime);
     }
     else{
         perror("Failure finding CPU time");
+        strncpy(cpuTime,NO_INFO,strlen(NO_INFO));
     }
 
     //Ahora verificamos si es satisfacible o no.
-    occurPosition = strstr(occurPosition,"UNSATISFIABLE");
+    occurPosition = strstr(buffer,"UNSATISFIABLE");
     if(occurPosition != NULL){
-        satisfacible = "UNSAT";
+        strncpy(satisfacible, "UNSAT", strlen("UNSAT"));
     }
     else if(strstr(buffer, "SATISFIABLE")!= NULL){ 
-        satisfacible = "SAT";
+       strncpy(satisfacible, "SAT", strlen("SAT"));
     }
     else{
         perror("Error finding satisfacibility.");
+        strncpy(satisfacible,NO_INFO,strlen(NO_INFO));
     }
+
     
+    
+    
+    //Guardamos la informacion en process info.
     sprintf(processInfo,"%s %s %s %s %s %d\n", fileName, numberOfClauses,numberOfVariables,
     satisfacible,cpuTime,getpid());
 

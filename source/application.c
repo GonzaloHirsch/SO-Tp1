@@ -18,7 +18,7 @@
 
 
 
-int createSlaves(int count,int slaves[],int pipesSlave[][2]);
+int createSlaves(int count,int pipesSlave[][2]);
 void readInfoSlave(int pipesSlave[][2], int slaveNum, char *tempBuffer);
 void sendInfoSlave(int pipesSlave[][2],int slaveNum, char ** filesToProcess, int filesSend);
 int sendInitialFiles(int fileCant, int pipesSlave[][2], char ** filesToProcess);
@@ -27,20 +27,24 @@ void sendInfoToView(char *buffer, QueueBuffer pCdt, sem_t *sem, sem_t *mutex);
 
 void terminateView();
 
-//TO DO: Agregar que cierre los pipes al final.
 int main(int argc, char * argv[]){
 
-
-    //wait for view
+    //Wait for view for 2 seconds.
     sleep(2);
 
+	//------DEFINICIONES MANEJO DE ESCLAVOS Y ARCHIVO RESULT---------------------------------
 	int filesSend = 0,filesCant = argc-1,filesRec =0;
-	int slaves[SLAVE_COUNT];
 	int pipesSlave[SLAVE_COUNT][2];
 	//Los archivos a procesar empiezan con el 2do archivo de los argumentos.
 	char ** filesToProcess = argv+1;
 
+	FILE * resultFile = fopen("result.txt","w");
+
+	//----------------------------------------------------------------------
+
     //todo integration with view / beginning of view ipc preparation code
+
+	//-------MANEJO DE SHM Y VISTA-----------------------------------------------------------
 
     //Example user-defined buffer size
     size_t size = argc*MAX_INFO_FROM_SLAVE;
@@ -70,10 +74,9 @@ int main(int argc, char * argv[]){
 
     //todo end of view ipc preparation code
 
+	//-------------------------------------------------------------------------------------
 
-    //Creamos los esclavos
-	createSlaves(SLAVE_COUNT,slaves,pipesSlave);
-
+	//----------------MANEJO DE MULTIPIPES-------------------------------------------
 	//Creamos el set de pipes a esperar para que lean.
 	fd_set pipeReadSet;
 	int i=0, pipesChecked = 0 ,numPipesReady;
@@ -82,13 +85,23 @@ int main(int argc, char * argv[]){
 	tv.tv_sec = 30;
     tv.tv_usec = 0;
 
+	//-------------------------------------------------------------------------------
+
+
+    //Creamos los esclavos
+	createSlaves(SLAVE_COUNT,pipesSlave);
+
+	//Distribuimos los archivos iniciales
+	filesSend = sendInitialFiles(filesCant,pipesSlave,filesToProcess);
+
+	//Inicializamos el pipeReadSet para el select.
 	FD_ZERO(&pipeReadSet);
 	for(i=0;i<SLAVE_COUNT;i++){
 		FD_SET(pipesSlave[i][READ_END],&pipeReadSet);
 	}
 
-	//Distribuimos los archivos iniciales
-	filesSend = sendInitialFiles(filesCant,pipesSlave,filesToProcess);
+
+	//Recibimos resultados de los esclavos y enviamos archivos a los esclavos
 
 	while(filesRec < filesCant){
 		//Esperaremos por un tiempo indeterminado que alguno de los pipes este listo para la lectura.
@@ -116,9 +129,14 @@ int main(int argc, char * argv[]){
 
 			//Si ese pipe recibio info...
 			if(FD_ISSET(pipesSlave[i][READ_END],&pipeReadSet)){
-
-                readInfoSlave(pipesSlave, i, tempBuffer);//Leemos la informacion recibida
+				
+				//Leemos la informacion recibida del esclavo.
+                readInfoSlave(pipesSlave, i, tempBuffer);
+				//Mandamos la informacion a el proceso vista.
                 sendInfoToView(tempBuffer, qB, putGetSem, mutex);
+				//Guardamos la info en un archivo resultado.
+				fprintf(resultFile, "%s\n", tempBuffer);
+
 				filesRec++;
 
 				//Si todavia quedan archivos por mandar le enviamos 1 mas.
@@ -142,16 +160,14 @@ int main(int argc, char * argv[]){
 
 	//Signal view that no more files are left
 	sendInfoToView(END_OF_STREAM, qB, putGetSem, mutex);
+	//End slave process and close their pipes
 	terminateSlaves(pipesSlave);
-
-
-	//TODO: close pipes.
-
-
-    //todo view process housekeeping
+	//Cerramos el archivo result.
+	fclose(resultFile);
+    //Terminacion de shared memory.
     munmap(&qB, STD_BUFF_LENGTH + BUFFER_OFFSET);
     close(sharedBufferFd);
-
+	//Cierre de semaforos
     sem_close(putGetSem);
     sem_close(mutex);
 
@@ -168,7 +184,7 @@ void sendInfoToView(char *buffer, QueueBuffer qB, sem_t *putGetSem, sem_t *mutex
     sem_post(putGetSem);
 }
 
-int createSlaves(int count, int slaves[], int pipesSlave[][2]){
+int createSlaves(int count,int pipesSlave[][2]){
 	char * executeCommandArgs[3] = {"./slaveProcess",NULL,NULL};
 	
 	int i,pid, error;
@@ -222,8 +238,6 @@ int createSlaves(int count, int slaves[], int pipesSlave[][2]){
 			pipesSlave[i][READ_END] = pipeToMain[READ_END];
 			pipesSlave[i][WRITE_END] = pipeToSlave[WRITE_END];
 
-			//Guardamos el pid del los proceso esclavos en el orden que fueron creados.
-			slaves[i] = pid;
 		} 	
 	}
 
@@ -292,46 +306,16 @@ int sendInitialFiles(int filesCant, int pipesSlave[][2], char ** filesToProcess)
 
 /*
 	Manda la signal de terminacion a todos los procesos.
+	Cierra los pipes que estaban abiertos
  */
 void terminateSlaves(int pipesSlave[][2]){
 	int i;
 	char * terminateMess = "TERMINATE_PROCESS\n";
 	for(i=0;i<SLAVE_COUNT;i++){
 		write(pipesSlave[i][WRITE_END],terminateMess,strlen(terminateMess));
+		close(pipesSlave[i][WRITE_END]);
+		close(pipesSlave[i][READ_END]);
 	}
 
 }
 
-/* 
-
-void sendFiles(const char * directory){
-	// Puntero al directorio
-	DIR * d;
-
-	// Struct para lo que devuelve el readdir
-    struct dirent *dir;
-
-    // Apertura del directorio
-    d = opendir(directory);
-
-    // Valido que no haya habido ningun error al abrirlo
-    if (d != NULL)
-    {
-    	// Mientras hayan archivos en el directorio
-        while ((dir = readdir(d)) != NULL)
-        {
-        	// Verifico que sea un archivo lo que se leyo en el directorio
-        	if (dir->d_type == DT_REG){
-
-        	}
-        }
-
-        // Cerra el archivo cuando terminamos
-        closedir(d);
-    } 
-    // Si es null, se termina la ejecucion del programa y muestra el error correspondiente
-    else {
-    	perror("Error: ");
-    }
-}
-*/
