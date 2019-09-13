@@ -18,3 +18,11 @@ cmake-build-debug/
 
 source/slaveProcess
 source/application
+
+result.txt
+
+application
+
+slaveProcess
+
+view
