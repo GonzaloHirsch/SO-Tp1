@@ -9,20 +9,14 @@
 #include "../include/constants.h"
 
 
-static char * shmNameRoot = "/sharedBuffer";
-static char * putGetSemNameRoot = "/putGetSem";
-static char * mutexNameRoot = "/mutex";
-
-
 void printData(char *buff);
 
 int main(int argc, char * argv){
 
-    char pid;
+    int pid;
     size_t size;
 
-    fscanf(stdin, "%d\n", &pid);
-    fscanf(stdin, "%ld\n", &size);
+    scanf("%d\n%ld\n", &pid, &size);
 
     //todo remove test line
     printf("app pid: %d\nbuff_size:%ld\n\n", pid, size);
@@ -30,7 +24,7 @@ int main(int argc, char * argv){
 
     //this is a buffer for shm/semaphore names
     char namesBuffer[MAX_NAME_LENGTH];
-    sprintf(namesBuffer, "%s%d", shmNameRoot, pid);
+    sprintf(namesBuffer, "%s%d", SHM_NAME_ROOT, pid);
 
     //opening the shm (file descriptor, truncating, mapping)
     int sharedBufferFd = shm_open(namesBuffer, O_CREAT | O_RDWR, 0600);
@@ -39,25 +33,23 @@ int main(int argc, char * argv){
 
     //1 semaphore for indicating there is content to read
     //1 mutex semaphore for performing operations on memory
-    sprintf(namesBuffer, "%s%d", putGetSemNameRoot, pid);
+    sprintf(namesBuffer, "%s%d", PUT_GET_SEM_NAME_ROOT, pid);
     sem_t * putGetSem = sem_open(namesBuffer, O_CREAT);
-    sprintf(namesBuffer, "%s%d", mutexNameRoot, pid);
+    sprintf(namesBuffer, "%s%d", MUTEX_NAME_ROOT, pid);
     sem_t * mutex = sem_open(namesBuffer, O_CREAT);
 
 
     char readBuff[MAX_INFO_FROM_SLAVE];
 
     printf("%1024s\n", readBuff);
-    while(strcmp(readBuff, END_OF_STREAM) != 0){
-        printf("Waiting for putGetSem...\n");
+    while(1){
         sem_wait(putGetSem);
-        printf("got putGetSem, waiting for mutex\n");
         sem_wait(mutex);
         if(hasNext(qB))
             getString(qB, readBuff);
+        if(strcmp(readBuff, END_OF_STREAM) == 0)
+            break;
         printData(readBuff);
-        //printf("%s\n", getCurrentString(qB));
-        printf("posting on mutex\n");
         sem_post(mutex);
     }
 
@@ -67,6 +59,7 @@ int main(int argc, char * argv){
     sem_close(putGetSem);
     sem_close(mutex);
 
+    return 0;
 }
 
 void printData(char *buff) {

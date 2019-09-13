@@ -5,7 +5,7 @@
 #ifndef QUEUE_CONSTANTS_H
 #define QUEUE_CONSTANTS_H
 
-#define END_OF_STREAM "End of stream\n"
+#define END_OF_STREAM "End of stream"
 #define MAX_NAME_LENGTH 30
 
 #define SHM_NAME_ROOT "sharedBuffer"

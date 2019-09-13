@@ -56,6 +56,7 @@ int main(int argc, char * argv[]){
     int sharedBufferFd = shm_open(namesBuffer, O_CREAT | O_RDWR, 0600);
     ftruncate(sharedBufferFd, size + BUFFER_OFFSET);
     QueueBuffer qB = (QueueBuffer) mmap(0, size + BUFFER_OFFSET, PROT_WRITE | PROT_READ, MAP_SHARED, sharedBufferFd, 0);
+    initializeBuffer(qB, size);
 
     //1 semaphore for indicating there is content to read
     //1 mutex semaphore for performing operations on memory
@@ -63,6 +64,9 @@ int main(int argc, char * argv[]){
     sem_t * putGetSem = sem_open(namesBuffer, O_CREAT, 0600, 0);
     sprintf(namesBuffer, "%s%d", MUTEX_NAME_ROOT, pid);
     sem_t * mutex = sem_open(namesBuffer, O_CREAT, 0600, 1);
+
+    //todo tengo que ver esto
+    sem_post(mutex);
 
     //todo end of view ipc preparation code
 
@@ -145,7 +149,7 @@ int main(int argc, char * argv[]){
 
 
     //todo view process housekeeping
-    munmap(qB, STD_BUFF_LENGTH + BUFFER_OFFSET);
+    munmap(&qB, STD_BUFF_LENGTH + BUFFER_OFFSET);
     close(sharedBufferFd);
 
     sem_close(putGetSem);
@@ -241,6 +245,7 @@ void readInfoSlave(int pipesSlave[][2], int slaveNum, char *tempBuffer) {
     }
     tempBuffer[cnt] = 0; //Por las dudas, hay que asegurar que termine con 0.
 
+    printf("%s\n", tempBuffer);
 }
 
 void sendInfoSlave(int pipesSlave[][2],int slaveNum, char ** filesToProcess, int filesSend){
