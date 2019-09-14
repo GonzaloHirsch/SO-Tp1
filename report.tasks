@@ -1,0 +1,4 @@
+www.viva64.com/en/w	1	err	Help: The documentation for all analyzer warnings is available here: https://www.viva64.com/en/w/.
+/root/SO-Tp1/source/application.c	173	err	V585 An attempt to release the memory in which the 'qB' local variable is stored.
+/root/SO-Tp1/source/slaveProcess.c	30	err	V526 The 'strncmp' function returns 0 if corresponding strings are equal. Consider examining the condition for mistakes.
+/root/SO-Tp1/source/view.c	49	warn	V614 Potentially uninitialized buffer 'readBuff' used. Consider checking the first actual argument of the 'strcmp' function.
