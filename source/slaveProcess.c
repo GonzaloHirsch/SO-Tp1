@@ -25,7 +25,7 @@ int main(int argc, char * argv[]){
     //Leemos del standard input e iniciamos el ciclo hasta que el applicacion mande
     //la senial terminate process.
     readFromStdin(inputBuffer, MAX_INPUT_BUFFER);
-    while(strncmp(inputBuffer,TERMINATE_MESSAGE,sizeof(TERMINATE_MESSAGE) != 0)){
+    while(strncmp(inputBuffer,TERMINATE_MESSAGE,sizeof(TERMINATE_MESSAGE))){
         
         //Guardamos en un array los files a procesar.
         cantP = selectProcesses(inputBuffer,filesToProcess);

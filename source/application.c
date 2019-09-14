@@ -22,9 +22,9 @@
 int createSlaves(int count,int pipesSlave[][2]);
 void readInfoSlave(int pipesSlave[][2], int slaveNum, char *tempBuffer);
 void sendInfoSlave(int pipesSlave[][2],int slaveNum, char ** filesToProcess, int filesSend);
-int sendInitialFiles(int fileCant, int pipesSlave[][2], char ** filesToProcess);
+int sendInitialFiles(int filesCant, int pipesSlave[][2], char ** filesToProcess);
 void terminateSlaves(int pipesSlave[][2]);
-void sendInfoToView(char *buffer, QueueBuffer pCdt, sem_t *sem, sem_t *mutex);
+void sendInfoToView(char *buffer, QueueBuffer qB, sem_t *putGetSem, sem_t *mutex);
 void saveInfoResult(FILE * resultFile, char * buffer);
 
 void terminateView();
