@@ -30,9 +30,5 @@ int hasNext(QueueBuffer qB);
 //offset qB->head without proceeding to the next string
 const char * getCurrentString(QueueBuffer qB);
 //Inserts char in buffer; Returns: 0 when successful, -1 when full todo delete:unused
-int putChar(QueueBuffer qB, char c);
-//Returns next char in buffer when successful, 0 when empty todo delete:unused
-char getChar(QueueBuffer qB);
-//Writes a string to buffer
 
 #endif //QUEUE_QUEUEBUFFER_H

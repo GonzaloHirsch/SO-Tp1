@@ -12,14 +12,15 @@ typedef struct QueueBufferCDT{
 }QueueBufferCDT;
 
 //copies the full string including 0 char at the end
-static char strcopy(char * dst, const char * src){
+static int strcopy(char * dst, const char * src){
 
-    char aux=0;
-    while(src[aux]){
-        dst[aux]=src[aux];
+    int aux=0;
+    while(*(src+aux)){
+        *(dst+aux)=*(src+aux);
         aux++;
     }
-    dst[aux++]=0;
+    *(dst+aux)=0;
+    aux++;
     return aux;
 }
 
@@ -55,27 +56,4 @@ const char * getCurrentString(QueueBuffer qB){
 
 int hasNext(QueueBuffer qB){
     return qB->head < qB->tail;
-}
-
-int putChar(QueueBuffer qB, char c){
-
-    //Returns -1 when full
-    if((qB->tail + 1) % MAX_BUFF_LENGTH == qB->head){
-        return -1;
-    }
-
-    qB->buff[qB->tail++] = c;
-
-    return 0;
-}
-
-char getChar(QueueBuffer qB){
-
-    //Returns 0 when empty
-    if(qB->head == qB->tail){
-        return 0;
-    }
-
-    char aux = qB->buff[qB->head++];
-    return aux;
 }
