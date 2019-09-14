@@ -41,7 +41,7 @@ int main(int argc, char * argv[]){
     sem_t * mutex = sem_open(namesBuffer, O_CREAT);
 
 
-    char readBuff[MAX_INFO_FROM_SLAVE];
+    char readBuff[MAX_INFO_FROM_SLAVE]={0};
 
     while(1){
         sem_wait(putGetSem);
