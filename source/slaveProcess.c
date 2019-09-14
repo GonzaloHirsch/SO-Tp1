@@ -8,16 +8,6 @@
 #include "../include/constants.h"
 
 
-#define MAX_PROCESS_LENGTH 200
-#define MAX_INPUT_BUFFER 200
-#define MAX_SAT_INPUT 2048
-#define MAX_PROCESSES_ALLOWED 50
-
-#define EXIT_STATUS 256
-
-
-
-
 int processSat(char * inputBuffer);
 void analyseSatResults(char * processInfo, char * buffer, char * fileName);
 void readFromStdin(char * inputBuffer, int size);
@@ -28,7 +18,7 @@ void cleanBuffer(char * buffer, int size);
 int main(int argc, char * argv[]){
 
     char inputBuffer[MAX_INPUT_BUFFER];
-    char * filesToProcess[MAX_PROCESSES_ALLOWED];
+    char * filesToProcess[MAX_FILES_ALLOWED];
     int cantP,i;
 
 
@@ -51,16 +41,13 @@ int main(int argc, char * argv[]){
 
     }
 
-    //TESTING
-    printf("Slave Terminated\n");
-
     return 0;
 }
 
 
 /*
-Creates a slave, procceses and parsed the info of the sat.
-Sends the info via stdout to application process.
+    Crea un esclavo, procesa y parsea la informacion del SAT.
+    Manda la informacion via STDOUT al application process.
  */
 int processSat(char * inputBuffer){
 
@@ -125,6 +112,10 @@ int processSat(char * inputBuffer){
     return 0;
 
 }
+/*
+    Funcion para analizar los resultados devueltos por el programa minisat.
+    Busca las ocurrencias de la informacion deseada y la copia en processInfo.
+ */
 
 void analyseSatResults(char * processInfo, char * buffer, char * fileName){
 
@@ -136,18 +127,18 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
 
     occurPosition = strstr(buffer, "Number of variables:");
     if(occurPosition != NULL){
-        sscanf(occurPosition, "Number of variables: %s", numberOfVariables);
+        sscanf(occurPosition, "Number of variables: %9s", numberOfVariables);
     }
     else{//Caso raro si no esta el dato.
         perror("Failure finding the number of variables");
-        //check that is null terminated
+        //Guardamos N/I (no info) en processInfo para esse campo
         strncpy(numberOfVariables,NO_INFO,strlen(NO_INFO) + 1);
     }
 
     //Notar que para no reccorrer todo de nuevo arrancamos en occurposition del anterior.
     occurPosition = strstr(buffer, "Number of clauses:");
     if(occurPosition != NULL){
-        sscanf(occurPosition, "Number of clauses: %s",numberOfClauses);
+        sscanf(occurPosition, "Number of clauses: %9s",numberOfClauses);
     }
     else{ 
         perror("Failure finding the number of clauses");
@@ -156,7 +147,7 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
     
     occurPosition = strstr(buffer, "CPU time");
     if(occurPosition != NULL){
-        sscanf(occurPosition, "CPU time : %s ",cpuTime);
+        sscanf(occurPosition, "CPU time : %14s ",cpuTime);
     }
     else{
         perror("Failure finding CPU time");
@@ -186,7 +177,10 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
 
 }
 
-
+/*
+    Funcion para leer de la entrada estandar hasta la ocurrencia de un \n.
+    Guarda la informacion en inputBuffer.
+ */
 
 void readFromStdin(char * inputBuffer, int size){
     //Leemos de la stdin hasta que ingrese una newline.
@@ -204,23 +198,27 @@ void readFromStdin(char * inputBuffer, int size){
 }
 
 /*
-    Selects file from the inputBuffer delimited with the FILE_DELIMITER.
-    Saves them in the filesToProcess array.
-    Returns: quantity of files to be processed
+   Funcion que en base a la informacion guardada en inputBuffer guardara 
+   los archivos a procesar en filesToProcess.
+   Devuelve la cantidad de archivos a procesar.
  */
 int selectProcesses(char * inputBuffer, char * filesToProcess[]){
     const char * fileDelimiter = FILE_DELIMITER;
     char * token = strtok(inputBuffer,fileDelimiter);
     int cantP = 0;
 
-    /* walk through other tokens */
-    while(cantP < MAX_PROCESSES_ALLOWED && token != NULL ) {
+    //Iteramos por cada archivo dispoible y lo guardamos.
+    while(cantP < MAX_FILES_ALLOWED && token != NULL ) {
         filesToProcess[cantP++] = token;
         token = strtok(NULL, fileDelimiter);
     }
 
     return cantP;
 }
+
+/*
+    Limpia el buffer.
+ */
 
 void cleanBuffer(char * buffer, int size){
     int i=0;

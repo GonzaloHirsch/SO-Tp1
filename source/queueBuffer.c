@@ -50,10 +50,6 @@ char * getString(QueueBuffer qB, char * dst){
     return aux;
 }
 
-const char * getCurrentString(QueueBuffer qB){
-    return &qB->buff[qB->head];
-}
-
 int hasNext(QueueBuffer qB){
     return qB->head < qB->tail;
 }
