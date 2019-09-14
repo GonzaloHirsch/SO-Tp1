@@ -8,11 +8,12 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/select.h>
-// Semaphore includes
+//Semaphore includes
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <semaphore.h>
 #include <sys/mman.h>
+//Definitions includes
 #include "../include/constants.h"
 #include "../include/queueBuffer.h"
 
@@ -24,6 +25,7 @@ void sendInfoSlave(int pipesSlave[][2],int slaveNum, char ** filesToProcess, int
 int sendInitialFiles(int fileCant, int pipesSlave[][2], char ** filesToProcess);
 void terminateSlaves(int pipesSlave[][2]);
 void sendInfoToView(char *buffer, QueueBuffer pCdt, sem_t *sem, sem_t *mutex);
+void saveInfoResult(FILE * resultFile, char * buffer);
 
 void terminateView();
 
@@ -135,7 +137,7 @@ int main(int argc, char * argv[]){
 				//Mandamos la informacion a el proceso vista.
                 sendInfoToView(tempBuffer, qB, putGetSem, mutex);
 				//Guardamos la info en un archivo resultado.
-				fprintf(resultFile, "%s\n", tempBuffer);
+				saveInfoResult(resultFile,tempBuffer);
 
 				filesRec++;
 
@@ -317,4 +319,23 @@ void terminateSlaves(int pipesSlave[][2]){
 	}
 
 }
+/*
+	Saves the information to a result file.
+ */
 
+void saveInfoResult(FILE * resultFile, char * buffer){
+	static char auxBuff[MAX_INFO_FROM_SLAVE];
+    //so that bufer doesn't get modified
+    strcpy(auxBuff, buffer);
+
+    char * info[6] = {"Nombre del Archivo", "Cantidad de Clausulas", "Cantidad de Variables", "Resultado", "Tiempo de Procesamiento", "ID del Esclavo"};
+    char * token = strtok(auxBuff, FILE_DELIMITER);
+
+    int i;
+    for(i=0; i<6; i++){
+		fprintf(resultFile, "%s: %s\n", info[i],token);
+        token = strtok(NULL, FILE_DELIMITER);
+    }
+	fprintf(resultFile, "\n");
+    
+}
