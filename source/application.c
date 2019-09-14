@@ -31,7 +31,7 @@ void terminateView();
 
 int main(int argc, char * argv[]){
 
-    //Wait for view for 2 seconds.
+    //Esperamos al vista por 2 segundos.
     sleep(2);
 
 	//------DEFINICIONES MANEJO DE ESCLAVOS Y ARCHIVO RESULT---------------------------------
@@ -53,7 +53,7 @@ int main(int argc, char * argv[]){
     int pid = getpid();
 
     //Print to stdout for piping with view
-    fprintf(stdout,  "%d\n%ld\n", pid, size);
+    fprintf(stdout,  "%d\n%lu\n", pid, (unsigned long) size);
 
     char namesBuffer[MAX_NAME_LENGTH];
     sprintf(namesBuffer, "%s%d", SHM_NAME_ROOT, pid);
@@ -84,7 +84,7 @@ int main(int argc, char * argv[]){
 	int i=0, pipesChecked = 0 ,numPipesReady;
 	//Struct que indica el tiempo a max a esperar a recibir data.
 	struct timeval tv;
-	tv.tv_sec = 30;
+	tv.tv_sec = 60;
     tv.tv_usec = 0;
 
 	//-------------------------------------------------------------------------------
@@ -106,9 +106,9 @@ int main(int argc, char * argv[]){
 	//Recibimos resultados de los esclavos y enviamos archivos a los esclavos
 
 	while(filesRec < filesCant){
-		//Esperaremos por un tiempo indeterminado que alguno de los pipes este listo para la lectura.
 
-		//FD_SETSIZE: hace que ande todo. sino no anda. porque? no hay porque.
+		//Esperaremos hasta que por lo menos un pipe tenga informacion disponible para leer.
+		//Si en 1 minuto no recibimos nada, termina.
 		numPipesReady = select(FD_SETSIZE, &pipeReadSet, NULL,NULL, &tv);
 
 		if(numPipesReady == -1){
@@ -116,13 +116,13 @@ int main(int argc, char * argv[]){
 			break;
 		}
 		else if(numPipesReady == 0){
-			perror("No data received in 30 seconds");
+			perror("No data received in 60 seconds");
 			break;
 		}
 
 		pipesChecked = 0; //Contamos cuantos archivos vamos procesando en este select.
 
-        //tempBuffer to read the results and send them to the view process
+        //Buffer para guardar la informacion recibida por el esclavo.
         char tempBuffer[MAX_INFO_FROM_SLAVE];
 
 		//Buscamos en cada pipe de los esclavos cual de ellos recibio info.
@@ -160,9 +160,9 @@ int main(int argc, char * argv[]){
 		
 	}
 
-	//Signal view that no more files are left
+	//Mandamos la signal a view que no hay mas archivos a procesar.
 	sendInfoToView(END_OF_STREAM, qB, putGetSem, mutex);
-	//End slave process and close their pipes
+	//Terminamos a los archivos esclavos y cerramos sus pipes.
 	terminateSlaves(pipesSlave);
 	//Cerramos el archivo result.
 	fclose(resultFile);
@@ -185,6 +185,11 @@ void sendInfoToView(char *buffer, QueueBuffer qB, sem_t *putGetSem, sem_t *mutex
     sem_post(mutex);
     sem_post(putGetSem);
 }
+
+/*
+	Crea SLAVE_COUNT esclavos y un pipe bidireccional correspondiente a cada uno.
+	Guarda la informacion de los pipes correspondientes en pipesSlave.
+ */
 
 int createSlaves(int count,int pipesSlave[][2]){
 	char * executeCommandArgs[3] = {"./slaveProcess",NULL,NULL};
@@ -246,6 +251,10 @@ int createSlaves(int count,int pipesSlave[][2]){
 	return 0;
 }
 
+/*
+	Lee la informacion del archivo esclavo hasta encontrar el \n y lo guarda en tempBuffer.
+ */
+
 void readInfoSlave(int pipesSlave[][2], int slaveNum, char *tempBuffer) {
 
     char c = 0;
@@ -262,6 +271,9 @@ void readInfoSlave(int pipesSlave[][2], int slaveNum, char *tempBuffer) {
     tempBuffer[cnt] = 0; //Por las dudas, hay que asegurar que termine con 0.
 
 }
+/*
+	Envia un nuevo archivo al proceso esclavo.
+ */
 
 void sendInfoSlave(int pipesSlave[][2],int slaveNum, char ** filesToProcess, int filesSend){
 	write(pipesSlave[slaveNum][WRITE_END], filesToProcess[filesSend],strlen(filesToProcess[filesSend]));
@@ -269,8 +281,10 @@ void sendInfoSlave(int pipesSlave[][2],int slaveNum, char ** filesToProcess, int
 }
 
 /*
-	Send initial files to be distributed. 
-	Returns the files already distributed.
+	Funcion para repartir los archivos iniciales.
+	Reparte entre 1 y MAX_FILES_ALLOWED a todos los esclavos disponibles. Toma la mitad
+	de los archivos a procesar y los divide por la cantidad de esclavos disponibles.
+	Devuelve la cantidad de archivos enviados.
  */
 int sendInitialFiles(int filesCant, int pipesSlave[][2], char ** filesToProcess){
 	//Take half of the files and distribute an equal quantity to each slave.
@@ -279,9 +293,12 @@ int sendInitialFiles(int filesCant, int pipesSlave[][2], char ** filesToProcess)
 	int filesSend = 0, slaveNum ,i;
 
 	//Caso especial: Si inicialmente tenemos mas esclavos que la mitad de archivos a procesar
-	//le repartimos 1 a cada uno.
+	//le repartimos 1 a cada uno. 
 	if(filesPerSlave == 0)
 		filesPerSlave = 1;
+	//Si superamos la cantidad de archivos maxima por esclavo, le asignamos simplemente la cant maxima
+	else if(filesPerSlave > MAX_FILES_ALLOWED)
+		filesPerSlave = MAX_FILES_ALLOWED;
 	
 	for(slaveNum=0;slaveNum < SLAVE_COUNT;slaveNum++){
 		
@@ -311,7 +328,7 @@ int sendInitialFiles(int filesCant, int pipesSlave[][2], char ** filesToProcess)
  */
 void terminateSlaves(int pipesSlave[][2]){
 	int i;
-	char * terminateMess = "TERMINATE_PROCESS\n";
+	char * terminateMess = TERMINATE_MESSAGE;
 	for(i=0;i<SLAVE_COUNT;i++){
 		write(pipesSlave[i][WRITE_END],terminateMess,strlen(terminateMess));
 		close(pipesSlave[i][WRITE_END]);
@@ -320,7 +337,7 @@ void terminateSlaves(int pipesSlave[][2]){
 
 }
 /*
-	Saves the information to a result file.
+	Guardamos la informacion de los resultados en el archivo results.txt.
  */
 
 void saveInfoResult(FILE * resultFile, char * buffer){

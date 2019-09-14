@@ -16,7 +16,7 @@ int main(int argc, char * argv[]){
     int pid;
     size_t size;
 
-    scanf("%d\n%ld\n", &pid, &size);
+    scanf("%d\n%lu\n", &pid,(unsigned long *) &size);
 
 
     //this is a buffer for shm/semaphore names
