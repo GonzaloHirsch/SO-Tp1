@@ -141,7 +141,7 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
     else{//Caso raro si no esta el dato.
         perror("Failure finding the number of variables");
         //check that is null terminated
-        strncpy(numberOfVariables,NO_INFO,strlen(NO_INFO));
+        strncpy(numberOfVariables,NO_INFO,strlen(NO_INFO) + 1);
     }
 
     //Notar que para no reccorrer todo de nuevo arrancamos en occurposition del anterior.
@@ -151,7 +151,7 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
     }
     else{ 
         perror("Failure finding the number of clauses");
-        strncpy(numberOfClauses,NO_INFO,strlen(NO_INFO));
+        strncpy(numberOfClauses,NO_INFO,strlen(NO_INFO) + 1);
     }
     
     occurPosition = strstr(buffer, "CPU time");
@@ -160,20 +160,20 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
     }
     else{
         perror("Failure finding CPU time");
-        strncpy(cpuTime,NO_INFO,strlen(NO_INFO));
+        strncpy(cpuTime,NO_INFO,strlen(NO_INFO)+1);
     }
 
     //Ahora verificamos si es satisfacible o no.
     occurPosition = strstr(buffer,"UNSATISFIABLE");
     if(occurPosition != NULL){
-        strncpy(satisfacible, "UNSAT", strlen("UNSAT"));
+        strncpy(satisfacible, "UNSAT", strlen("UNSAT") + 1);
     }
     else if(strstr(buffer, "SATISFIABLE")!= NULL){ 
-       strncpy(satisfacible, "SAT", strlen("SAT"));
+       strncpy(satisfacible, "SAT", strlen("SAT") + 1);
     }
     else{
-        perror("Error finding satisfacibility.");
-        strncpy(satisfacible,NO_INFO,strlen(NO_INFO));
+        perror("Error finding satisfiability.");
+        strncpy(satisfacible,NO_INFO,strlen(NO_INFO) + 1);
     }
 
     
