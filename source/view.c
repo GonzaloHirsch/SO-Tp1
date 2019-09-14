@@ -16,8 +16,13 @@ int main(int argc, char * argv[]){
     int pid;
     size_t size;
 
-    scanf("%d\n%lu\n", &pid,(unsigned long *) &size);
+    char * end;
+    char read[MAX_STDIN_INPUT];
 
+    fgets(read, MAX_STDIN_INPUT, stdin);
+    pid = (int) strtol(read, &end, 10);
+    fgets(read, MAX_STDIN_INPUT, stdin);
+    size = strtol(read, &end, 10);
 
     //this is a buffer for shm/semaphore names
     char namesBuffer[MAX_NAME_LENGTH];

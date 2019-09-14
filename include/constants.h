@@ -40,4 +40,6 @@
 
 #define EXIT_STATUS 256
 
+#define MAX_STDIN_INPUT 30
+
 #endif //QUEUE_CONSTANTS_H
