@@ -12,16 +12,17 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/select.h>
-//Semaphore includes
+//includes de semaforos
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <semaphore.h>
 #include <sys/mman.h>
-//Definitions includes
+//includes de definiciones
 #include "../include/constants.h"
 #include "../include/queueBuffer.h"
 
-
+//nombres de cada campo a mostrar en pantalla
+char * info[6] = {"Nombre del Archivo", "Cantidad de Clausulas", "Cantidad de Variables", "Resultado", "Tiempo de Procesamiento", "ID del Esclavo"};
 
 int createSlaves(int count,int pipesSlave[][2]);
 void readInfoSlave(int pipesSlave[][2], int slaveNum, char *tempBuffer);
@@ -87,7 +88,6 @@ int main(int argc, char * argv[]){
     tv.tv_usec = 0;
 
 	//-------------------------------------------------------------------------------
-
 
     //Creamos los esclavos
 	createSlaves(SLAVE_COUNT,pipesSlave);
@@ -335,16 +335,15 @@ void terminateSlaves(int pipesSlave[][2]){
 	}
 
 }
+
 /*
 	Guardamos la informacion de los resultados en el archivo results.txt.
  */
-
 void saveInfoResult(FILE * resultFile, char * buffer){
 	static char auxBuff[MAX_INFO_FROM_SLAVE];
     //Asi no modificamos el buffer con strok
     strcpy(auxBuff, buffer);
 
-    char * info[6] = {"Nombre del Archivo", "Cantidad de Clausulas", "Cantidad de Variables", "Resultado", "Tiempo de Procesamiento", "ID del Esclavo"};
     char * token = strtok(auxBuff, FILE_DELIMITER);
 
     int i;

@@ -12,6 +12,9 @@
 #include "../include/queueBuffer.h"
 #include "../include/constants.h"
 
+//definimos la info aca, asi no se tiene que crear cada vez que se llama a la funcion
+char * info[6] = {"Nombre del Archivo", "Cantidad de Clausulas", "Cantidad de Variables", "Resultado", "Tiempo de Procesamiento", "ID del Esclavo"};
+
 void printData(const char *buff);
 
 int main(int argc, char * argv[]){
@@ -22,6 +25,7 @@ int main(int argc, char * argv[]){
     char * end;
     char read[MAX_STDIN_INPUT];
 
+    //lee el PID y el tamaño de la shm
     fgets(read, MAX_STDIN_INPUT, stdin);
     pid = (int) strtol(read, &end, 10);
     fgets(read, MAX_STDIN_INPUT, stdin);
@@ -43,12 +47,14 @@ int main(int argc, char * argv[]){
     sprintf(namesBuffer, "%s%d", MUTEX_NAME_ROOT, pid);
     sem_t * mutex = sem_open(namesBuffer, O_CREAT);
 
-
     char readBuff[MAX_INFO_FROM_SLAVE]={0};
 
     while(1){
+        //espera a que la aplicacion indique que hay para leer
         sem_wait(putGetSem);
         sem_wait(mutex);
+
+        //lee del buffer
         if(hasNext(qB))
             getString(qB, readBuff);
         sem_post(mutex);
@@ -80,8 +86,6 @@ void printData(const char *buff) {
 
     //esto es para que lo que esta en buff no se modifique
     strcpy(auxBuff, buff);
-
-    char * info[6] = {"Nombre del Archivo", "Cantidad de Clausulas", "Cantidad de Variables", "Resultado", "Tiempo de Procesamiento", "ID del Esclavo"};
 
     char * token = strtok(auxBuff, FILE_DELIMITER);
 

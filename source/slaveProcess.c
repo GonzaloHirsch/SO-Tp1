@@ -25,7 +25,6 @@ int main(int argc, char * argv[]){
     char * filesToProcess[MAX_FILES_ALLOWED];
     int cantP,i;
 
-
     //Leemos del standard input e iniciamos el ciclo hasta que el applicacion mande
     //la senial terminate process.
     readFromStdin(inputBuffer, MAX_INPUT_BUFFER);
@@ -84,7 +83,6 @@ int processSat(char * inputBuffer){
             perror("Failed executing minisat in slave:");
             exit(1);
         }
-
     }
     else{ 
 
@@ -114,13 +112,12 @@ int processSat(char * inputBuffer){
     }
 
     return 0;
-
 }
+
 /*
     Funcion para analizar los resultados devueltos por el programa minisat.
     Busca las ocurrencias de la informacion deseada y la copia en processInfo.
  */
-
 void analyseSatResults(char * processInfo, char * buffer, char * fileName){
 
     char * occurPosition;
@@ -171,14 +168,9 @@ void analyseSatResults(char * processInfo, char * buffer, char * fileName){
         strncpy(satisfacible,NO_INFO,strlen(NO_INFO) + 1);
     }
 
-    
-    
-    
     //Guardamos la informacion en process info.
     sprintf(processInfo,"%s %s %s %s %s %d\n", fileName, numberOfClauses,numberOfVariables,
     satisfacible,cpuTime,getpid());
-
-
 }
 
 /*
@@ -223,7 +215,6 @@ int selectProcesses(char * inputBuffer, char * filesToProcess[]){
 /*
     Limpia el buffer.
  */
-
 void cleanBuffer(char * buffer, int size){
     int i=0;
     for(;i<size;i++){
