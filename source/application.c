@@ -26,7 +26,6 @@ int sendInitialFiles(int filesCant, int pipesSlave[][2], char ** filesToProcess)
 void terminateSlaves(int pipesSlave[][2]);
 void sendInfoToView(char *buffer, QueueBuffer qB, sem_t *putGetSem, sem_t *mutex);
 void saveInfoResult(FILE * resultFile, char * buffer);
-
 void terminateView();
 
 int main(int argc, char * argv[]){
@@ -44,38 +43,34 @@ int main(int argc, char * argv[]){
 
 	//----------------------------------------------------------------------
 
-    //todo integration with view / beginning of view ipc preparation code
 
 	//-------MANEJO DE SHM Y VISTA-----------------------------------------------------------
 
-    //Example user-defined buffer size
+    //Ejemplo de tamaño de buffer definido por el usuario.
     size_t size = argc*MAX_INFO_FROM_SLAVE;
     int pid = getpid();
 
-    //Print to stdout for piping with view
+    //Imprimimos a stdout para pipear con el view.
     fprintf(stdout,  "%d\n%lu\n", pid, (unsigned long) size);
 
     char namesBuffer[MAX_NAME_LENGTH];
     sprintf(namesBuffer, "%s%d", SHM_NAME_ROOT, pid);
 
-    //Opening the shm (file descriptor, truncating, mapping)
+    //Abrimos la shared memory(file descriptor, truncating, mapping)
     int sharedBufferFd = shm_open(namesBuffer, O_CREAT | O_RDWR, 0600);
     ftruncate(sharedBufferFd, size + BUFFER_OFFSET);
     QueueBuffer qB = (QueueBuffer) mmap(0, size + BUFFER_OFFSET, PROT_WRITE | PROT_READ, MAP_SHARED, sharedBufferFd, 0);
     initializeBuffer(qB, size);
 
-    //1 semaphore for indicating there is content to read
-    //1 mutex semaphore for performing operations on memory
+    //1 semaphore para indicar que hay contenido para leer.
+    //1 mutex semaphore para realizar operaciones en memoria.
     sprintf(namesBuffer, "%s%d", PUT_GET_SEM_NAME_ROOT, pid);
     sem_t * putGetSem = sem_open(namesBuffer, O_CREAT, 0600, 0);
     sprintf(namesBuffer, "%s%d", MUTEX_NAME_ROOT, pid);
     sem_t * mutex = sem_open(namesBuffer, O_CREAT, 0600, 1);
 
-    //todo tengo que ver esto
+    //Posteamos inicialmente en el mutex.
     sem_post(mutex);
-
-    //todo end of view ipc preparation code
-
 	//-------------------------------------------------------------------------------------
 
 	//----------------MANEJO DE MULTIPIPES-------------------------------------------
@@ -342,7 +337,7 @@ void terminateSlaves(int pipesSlave[][2]){
 
 void saveInfoResult(FILE * resultFile, char * buffer){
 	static char auxBuff[MAX_INFO_FROM_SLAVE];
-    //so that bufer doesn't get modified
+    //Asi no modificamos el buffer con strok
     strcpy(auxBuff, buffer);
 
     char * info[6] = {"Nombre del Archivo", "Cantidad de Clausulas", "Cantidad de Variables", "Resultado", "Tiempo de Procesamiento", "ID del Esclavo"};
