@@ -167,7 +167,7 @@ int main(int argc, char * argv[]){
 	fclose(resultFile);
     //Terminacion de shared memory.
     close(sharedBufferFd);
-    munmap(qB, STD_BUFF_LENGTH + BUFFER_OFFSET);
+    munmap(qB, size + BUFFER_OFFSET);
 	//Cierre de semaforos
     sem_close(putGetSem);
     sem_close(mutex);

@@ -15,7 +15,7 @@ typedef struct QueueBufferCDT{
 
 }QueueBufferCDT;
 
-//copies the full string including 0 char at the end
+//copia el string completo incluyendo el 0 al final
 static int strcopy(char * dst, const char * src){
 
     int aux=0;
@@ -37,7 +37,7 @@ void initializeBuffer(QueueBuffer qB, size_t buffSize){
 
 int putString(QueueBuffer qB, char * string){
 
-    //check if string fits
+    //checkear si el string entra
     if(qB->tail + strlen(string) < qB->size) {
         qB->tail += strcopy(&qB->buff[qB->tail], string);
         return 0;
@@ -45,11 +45,11 @@ int putString(QueueBuffer qB, char * string){
     return -1;
 }
 
-char * getString(QueueBuffer qB, char * dst){
+const char * getString(QueueBuffer qB, char * dst){
 
     if(!hasNext(qB)) return NULL;
     char * aux = &qB->buff[qB->head];
-    //avanzo hasta el head proximo string
+    //avanza hasta el head proximo string
     qB->head += strcopy(dst, &qB->buff[qB->head]);
     return aux;
 }
