@@ -2,8 +2,8 @@
 // Created by root on 11.09.19.
 //
 
-#ifndef QUEUE_CONSTANTS_H
-#define QUEUE_CONSTANTS_H
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
 
 
 //Definiciones para el view.
@@ -42,4 +42,4 @@
 
 #define MAX_STDIN_INPUT 30
 
-#endif //QUEUE_CONSTANTS_H
+#endif //CONSTANT_h

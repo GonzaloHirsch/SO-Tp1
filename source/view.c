@@ -12,7 +12,6 @@
 #include "../include/queueBuffer.h"
 #include "../include/constants.h"
 
-
 void printData(const char *buff);
 
 int main(int argc, char * argv[]){
